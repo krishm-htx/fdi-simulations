@@ -12,8 +12,17 @@ import contextily as ctx
 MASTER_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
 INSTANCES_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Instances_DATA.xlsx"
 
+Methodology_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Methodology.png"
+GIS_Steps1_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps1.png"
+GIS_Steps2_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps2.png"
+
 # Global password variable (can be replaced with environment variable for better security)
-PASSWORD = "yourpassword123"
+PASSWORD = "StormwaterPlanning@htx"
+
+# Directory to store saved simulations
+SAVE_DIR = "saved_simulations"
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
 
 # Authentication: Simple password protection
 def authenticate():
@@ -25,6 +34,14 @@ def authenticate():
     else:
         st.sidebar.error("Incorrect Password")
         return False
+
+# Function to dynamically adjust Ws and Wp sliders (Ws + Wp = 100)
+def dynamic_sliders():
+    ws = st.slider('Set Ws:', min_value=0, max_value=100, value=50, step=1)
+    wp = 100 - ws
+    st.write(f"Automatically adjusted Wp: {wp}")
+    threshold_fdi = st.slider('Set FDI Threshold:', min_value=1.0, max_value=5.0, value=4.8, step=0.1)
+    return ws, wp, threshold_fdi
 
 # Function to calculate FDI
 def calculate_fdi(W_s, I_s, I_p):
@@ -40,7 +57,6 @@ def run_simulation(df, W_s_range, threshold):
         Is = row['Is']
         Ip = row['Ip']
         object_id = row['OBJECTID']
-        grid_id = row['GRID_ID']
 
         count = 0
         for W_s in W_s_range:
@@ -52,7 +68,6 @@ def run_simulation(df, W_s_range, threshold):
         histogram_data[object_id] = count
 
     # Display histogram
-    st.write("### FDI Histogram")
     plt.figure(figsize=(10, 6))
     plt.bar(histogram_data.keys(), histogram_data.values(), color='skyblue')
     plt.xlabel('Object ID')
@@ -73,7 +88,7 @@ def merge_with_master(fdi_df, master_df):
     return merged_df
 
 # Function to plot hexagons on map
-def plot_clusters_on_map(clustered_hexagons):
+def plot_clusters_on_map(clustered_hexagons, top_10_hex):
     hex_polygons = []
     for hex_id in clustered_hexagons:
         hex_boundary = h3.h3_to_geo_boundary(hex_id, geo_json=True)
@@ -85,79 +100,96 @@ def plot_clusters_on_map(clustered_hexagons):
 
     fig, ax = plt.subplots(figsize=(10, 10))
     gdf.plot(ax=ax, color='blue', alpha=0.5, edgecolor='black')
+
+    # Highlight top 10 hexagons with highest FDI_Count
+    for hex_id in top_10_hex:
+        hex_boundary = h3.h3_to_geo_boundary(hex_id, geo_json=True)
+        hex_polygon = Polygon(hex_boundary)
+        gpd.GeoSeries([hex_polygon]).plot(ax=ax, color='red', edgecolor='black')
+
     ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
     st.pyplot(fig)
 
-# Function to handle clustering logic
-def handle_cluster_download_and_display(df):
-    df_filtered = df[df['FDI_Count'] > 0].copy()
-    hexes_with_fdi = set(df_filtered['GRID_ID'])
-    visited = set()
+# Function to save the simulation
+def save_simulation(name, df, ws, wp, threshold, top_10_hex):
+    save_path = os.path.join(SAVE_DIR, f"{name}.xlsx")
+    df.to_excel(save_path, index=False)
 
-    def find_cluster(hex_id):
-        cluster = []
-        to_explore = [hex_id]
-        while to_explore:
-            current_hex = to_explore.pop()
-            if current_hex not in visited:
-                visited.add(current_hex)
-                cluster.append(current_hex)
-                neighbors = h3.k_ring(current_hex, 1)
-                for neighbor in neighbors:
-                    if neighbor in hexes_with_fdi and neighbor not in visited:
-                        to_explore.append(neighbor)
-        return cluster
+    # Save metadata (Ws, Wp, threshold)
+    meta_data = {"Ws": ws, "Wp": wp, "Threshold FDI": threshold, "Top 10 Hex": top_10_hex}
+    with open(os.path.join(SAVE_DIR, f"{name}_meta.txt"), "w") as f:
+        f.write(str(meta_data))
 
-    clusters = []
-    for hex_id in hexes_with_fdi:
-        if hex_id not in visited:
-            cluster = find_cluster(hex_id)
-            if len(cluster) >= 3:
-                clusters.append(cluster)
+    st.success(f"Simulation '{name}' saved successfully.")
 
-    df['Cluster_Assigned'] = 0
-    for cluster in clusters:
-        df.loc[df['GRID_ID'].isin(cluster), 'Cluster_Assigned'] = 1
-
-    # Plot clusters on map
-    clustered_hexagons = df[df['Cluster_Assigned'] == 1]['GRID_ID'].tolist()
-    plot_clusters_on_map(clustered_hexagons)
-
-    # Download clusters
-    output_file = BytesIO()
-    df.to_excel(output_file, index=False, engine='openpyxl')
-    output_file.seek(0)
-    st.download_button(label="Download Clustered Data", data=output_file, file_name="clustered_data.xlsx")
+# Function to load saved simulations
+def load_simulation():
+    files = [f for f in os.listdir(SAVE_DIR) if f.endswith('.xlsx')]
+    if files:
+        selected_file = st.selectbox("Select a saved simulation to load:", files)
+        if st.button("Load Simulation"):
+            loaded_df = pd.read_excel(os.path.join(SAVE_DIR, selected_file))
+            with open(os.path.join(SAVE_DIR, f"{selected_file.replace('.xlsx', '_meta.txt')}"), "r") as f:
+                meta_data = eval(f.read())
+            st.write(f"Loaded simulation: {selected_file}")
+            st.write(f"Ws: {meta_data['Ws']}, Wp: {meta_data['Wp']}, Threshold FDI: {meta_data['Threshold FDI']}")
+            st.dataframe(loaded_df)
+            
+            # Show top 10 hexagons and plot the map
+            top_10_hex = meta_data['Top 10 Hex']
+            plot_clusters_on_map(loaded_df['GRID_ID'].tolist(), top_10_hex)
 
 # Main Streamlit app function
 def main():
     if authenticate():
         st.title("FDI Simulation and Clustering App")
         st.write("This app allows you to run FDI simulations and cluster H3 hexagons based on FDI values.")
-        
-        # Read the Excel files directly from the repository
-        st.write("Loading data from repository...")
-        df = pd.read_excel(INSTANCES_URL)
-        master_df = pd.read_excel(MASTER_URL)
-        
-        # User input section
-        ws_min = st.slider('Start of Ws range:', min_value=0, max_value=100, value=50, step=1)
-        threshold = st.number_input('FDI Threshold:', value=4.8)
-        W_s_range = np.arange(ws_min, 101)
-        
-        # Run simulation button
+
+        # Tabs for different sections
+        tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology"])
+
+        # Import to ArcPro Help Tab
+        with tab1:
+            st.write("### Instructions to import the Excel file into ArcPro")
+            st.image(ARC_HELP_IMG1, caption="Step 1: Load the file")
+            st.image(ARC_HELP_IMG2, caption="Step 2: Import settings")
+
+        # Saved Simulations Tab
+        with tab2:
+            st.write("### View and Load Saved Simulations")
+            load_simulation()
+
+        # Methodology Tab
+        with tab3:
+            st.write("### Methodology for FDI Calculations")
+            st.image(METHODOLOGY_IMG, caption="FDI Calculation Methodology")
+
+        # User inputs (Ws, Wp, threshold)
+        ws, wp, threshold_fdi = dynamic_sliders()
+
+        # Button to run simulation
         if st.button('Run FDI Simulation'):
-            df = run_simulation(df, W_s_range, threshold)
+            df = pd.read_excel("Instances_DATA.xlsx")  # Replace with actual file location
+            master_df = pd.read_excel("MasterGridObj.xlsx")  # Replace with actual file location
+
+            df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
             merged_df = merge_with_master(df, master_df)
-            
-            # Provide download link for FDI results
-            output = BytesIO()
-            merged_df.to_excel(output, index=False, engine='openpyxl')
-            output.seek(0)
-            st.download_button(label="Download FDI Results", data=output, file_name="FDI_results.xlsx")
-            
-            # Handle clustering and map display
-            handle_cluster_download_and_display(df)
+
+            # Calculate the top 10 hexagons by FDI_Count
+            top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
+
+            # Save the simulation
+            sim_name = st.text_input("Enter a name for this simulation")
+            if sim_name and st.button("Save Simulation"):
+                save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
+                
+            # Display the top 10 hexagons
+            st.write("### Top 10 hexagons with highest FDI_Count")
+            st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', 'GRID_ID', 'FDI_Count']])
+
+            # Plot the hexagons on a map
+            plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
+
 
 if __name__ == '__main__':
     main()
