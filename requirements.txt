@@ -1,1 +1,9 @@
+pandas
+numpy
+matplotlib
+geopandas
+shapely
+h3
+contextily
+openpyxl
 streamlit
