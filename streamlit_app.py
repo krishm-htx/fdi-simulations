@@ -84,7 +84,7 @@ def plot_clusters_on_map(clustered_hexagons, top_10_hex):
         hex_polygons.append(hex_polygon)
 
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
- gdf = gdf.to_crs(epsg=3857)
+    gdf = gdf.to_crs(epsg=3857)
 
     fig, ax = plt.subplots (figsize=(10, 10))
     gdf.plot(ax=ax, color='blue', alpha=0.5, edgecolor='black')
