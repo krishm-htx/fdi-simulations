@@ -1,3 +1,4 @@
+# Import necessary libraries
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -17,20 +18,10 @@ Methodology_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/
 GIS_Steps1_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps1.png"
 GIS_Steps2_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps2.png"
 
-# Global password variable (can be replaced with environment variable for better security)
-PASSWORD = "StormwaterPlanning@htx"
-
 # Directory to store saved simulations
 SAVE_DIR = "saved_simulations"
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
-
-# Authentication: Simple password protection
-def authenticate(username, password):
-    if password.strip() == PASSWORD.strip() and username.strip() != "":
-        return True
-    else:
-        return False
 
 # Function to dynamically adjust Ws and Wp sliders (Ws + Wp = 100)
 def dynamic_sliders():
@@ -141,64 +132,50 @@ def main():
     st.title("FDI Simulation and Clustering App")
     st.write("This app allows you to run FDI simulations for multiple weights and cluster H3 hexagons based on FDI values.")
 
-    # Add a username and password input
-    username = st.text_input("Enter your username")
-    password = st.text_input("Enter your password", type="password")
+    # Tabs for different sections
+    tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", " Methodology"])
 
-    # Add a button to authenticate
-    if st.button("Authenticate"):
-        if authenticate(username, password):
-            st.success("Authenticated successfully!")
-            # Store the username in a repository (e.g., a text file)
-            with open("users.txt", "a") as f:
-                f.write(f"{username}\n")
+    # Import to ArcPro Help Tab
+    with tab1:
+        st.write("### Instructions to import the Excel file into ArcPro")
+        st.image(Methodology_URL, caption="Step 1: Load the file")
+        st.image(GIS_Steps1_URL, caption="Step 2: Import settings")
 
-            # Tabs for different sections
-            tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology"])
+    # Saved Simulations Tab
+    with tab2:
+        st.write("### View and Load Saved Simulations")
+        load_simulation()
 
-            # Import to ArcPro Help Tab
-            with tab1:
-                st.write("### Instructions to import the Excel file into ArcPro")
-                st.image(Methodology_URL, caption="Step 1: Load the file")
-                st.image(GIS_Steps1_URL, caption="Step 2: Import settings")
+    # Methodology Tab
+    with tab3:
+        st.write("### Methodology for FDI Calculations") 
+        st.image(Methodology_URL, caption="FDI Calculation Methodology")
 
-            # Saved Simulations Tab
-            with tab2:
-                st.write("### View and Load Saved Simulations")
-                load_simulation()
+    # User inputs (Ws, Wp, threshold)
+    ws, wp, threshold_fdi = dynamic_sliders()
 
-            # Methodology Tab
-            with tab3:
-                st.write("### Methodology for FDI Calculations") 
-                st.image(Methodology_URL, caption="FDI Calculation Methodology")
+    # Button to run simulation
+    if st.button('Run FDI Simulation'):
+        df = pd.read_excel(INSTANCES_URL)  # Replace with actual file location
+        master_df = pd.read_excel(MASTER_URL)  # Replace with actual file location
 
-            # User inputs (Ws, Wp, threshold)
-            ws, wp, threshold_fdi = dynamic_sliders()
+        df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
+        merged_df = merge_with_master(df, master_df)
 
-            # Button to run simulation
-            if st.button('Run FDI Simulation'):
-                df = pd.read_excel(INSTANCES_URL)  # Replace with actual file location
-                master_df = pd.read_excel(MASTER_URL)  # Replace with actual file location
+        # Calculate the top 10 hexagons by FDI_Count
+        top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
 
-                df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
-                merged_df = merge_with_master(df, master_df)
+        # Save the simulation
+        sim_name = st.text_input("Enter a name for this simulation")
+        if sim_name and st.button("Save Simulation"):
+            save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
+            
+        # Display the top 10 hexagons
+        st.write("### Top 10 hexagons with highest FDI_Count")
+        st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', ' GRID_ID', 'FDI_Count']])
 
-                # Calculate the top 10 hexagons by FDI_Count
-                top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
-
-                # Save the simulation
-                sim_name = st.text_input("Enter a name for this simulation")
-                if sim_name and st.button("Save Simulation"):
-                    save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
-                    
-                # Display the top 10 hexagons
-                st.write("### Top 10 hexagons with highest FDI_Count")
-                st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', ' GRID_ID', 'FDI_Count']])
-
-                # Plot the hexagons on a map
-                plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
-        else:
-            st.error("Incorrect username or password")
+        # Plot the hexagons on a map
+        plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
 
 if __name__ == '__main__':
     main()
