@@ -8,10 +8,10 @@ import h3
 import contextily as ctx
 
 # Load your PDFs and data from GitHub or local repo
-PDF_METHOD_PATH = "https://raw.githubusercontent.com/yourusername/repo/main/methodology.pdf"
-PDF_HELP_PATH = "https://raw.githubusercontent.com/yourusername/repo/main/help.pdf"
-INSTANCES_FILE_PATH = "https://raw.githubusercontent.com/yourusername/repo/main/data/instances_data.xlsx"
-MASTER_FILE_PATH = "https://raw.githubusercontent.com/yourusername/repo/main/data/MasterGridObj.xlsx"
+PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
+PDF_HELP_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf"
+INSTANCES_FILE_PATH ="https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Instances_DATA.xlsx"
+MASTER_FILE_PATH = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
 
 # Function to calculate FDI
 def calculate_fdi(W_s, I_s, I_p):
