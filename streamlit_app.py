@@ -139,9 +139,7 @@ def main():
     with tab1:
         st.write("### Instructions to import the Excel file into ArcPro")
         with st.expander("View PDF"):
-            response = requests.get(GIS_Steps_URL)
-            with BytesIO(response.content) as f:
-                st.download_button('Download PDF', f, file_name='Excel_Import_to_ArcPro.pdf', mime='application/pdf')
+            st.write(f'<iframe src="{GIS_Steps_URL}" width="100%" height="600px"></iframe>', unsafe_allow_html=True) 
 
     # Saved Simulations Tab
     with tab2:
@@ -152,9 +150,7 @@ def main():
     with tab3:
         st.write("### Methodology for FDI Calculations") 
         with st.expander("View PDF"):
-            response = requests.get(Methodology_URL)
-            with BytesIO(response.content) as f:
-                st.download_button('Download PDF', f, file_name='FDI-Sims-method.pdf', mime='application/pdf')
+            st.write(f'<iframe src="{Methodology_URL}" width="100%" height="600px"></iframe>', unsafe_allow_html=True) 
 
     # Run Simulations Tab
     with tab4:
