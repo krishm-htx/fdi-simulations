@@ -14,9 +14,9 @@ import os
 MASTER_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
 INSTANCES_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Instances_DATA.xlsx"
 
-Methodology_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Methodology.png"
-GIS_Steps1_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps1.png"
-GIS_Steps2_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/GIS_Steps2.png"
+Methodology_URL = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
+GIS_Steps_URL = "https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf"
+
 
 # Directory to store saved simulations
 SAVE_DIR = "saved_simulations"
@@ -84,7 +84,7 @@ def plot_clusters_on_map(clustered_hexagons, top_10_hex):
         hex_polygons.append(hex_polygon)
 
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
-    gdf = gdf.to_crs(epsg=3857)
+ gdf = gdf.to_crs(epsg=3857)
 
     fig, ax = plt.subplots (figsize=(10, 10))
     gdf.plot(ax=ax, color='blue', alpha=0.5, edgecolor='black')
@@ -95,7 +95,7 @@ def plot_clusters_on_map(clustered_hexagons, top_10_hex):
         hex_polygon = Polygon(hex_boundary)
         gpd.GeoSeries([hex_polygon]).plot(ax=ax, color='red', edgecolor='black')
 
-    ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
+    ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, zoom=10, center=[-95.3698, 29.7634])  # Zoomed in on Houston
     st.pyplot(fig)
 
 # Function to save the simulation
@@ -138,8 +138,10 @@ def main():
     # Import to ArcPro Help Tab
     with tab1:
         st.write("### Instructions to import the Excel file into ArcPro")
-        st.image(Methodology_URL, caption="Step 1: Load the file")
-        st.image(GIS_Steps1_URL, caption="Step 2: Import settings")
+        with st.expander("View PDF"):
+            response = requests.get(GIS_Steps_URL)
+            with BytesIO(response.content) as f:
+                st.download_button('Download PDF', f, file_name='Excel_Import_to_ArcPro.pdf', mime='application/pdf')
 
     # Saved Simulations Tab
     with tab2:
@@ -149,7 +151,10 @@ def main():
     # Methodology Tab
     with tab3:
         st.write("### Methodology for FDI Calculations") 
-        st.image(Methodology_URL, caption="FDI Calculation Methodology")
+        with st.expander("View PDF"):
+            response = requests.get(Methodology_URL)
+            with BytesIO(response.content) as f:
+                st.download_button('Download PDF', f, file_name='FDI-Sims-method.pdf', mime='application/pdf')
 
     # Run Simulations Tab
     with tab4:
@@ -171,7 +176,7 @@ def main():
             if sim_name and st.button("Save Simulation"):
                 save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
             
-            # Display the top 10 hexagons
+ # Display the top 10 hexagons
             st.write("### Top 10 hexagons with highest FDI_Count")
             st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', 'GRID_ID', 'FDI_Count']])
 
