@@ -86,7 +86,7 @@ def plot_clusters_on_map(clustered_hexagons, top_10_hex):
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
     gdf = gdf.to_crs(epsg=3857)
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots (figsize=(10, 10))
     gdf.plot(ax=ax, color='blue', alpha=0.5, edgecolor='black')
 
     # Highlight top 10 hexagons with highest FDI_Count
@@ -133,7 +133,7 @@ def main():
     st.write("This app allows you to run FDI simulations for multiple weights and cluster H3 hexagons based on FDI values.")
 
     # Tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", " Methodology"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology", "Run Simulations"])
 
     # Import to ArcPro Help Tab
     with tab1:
@@ -151,31 +151,32 @@ def main():
         st.write("### Methodology for FDI Calculations") 
         st.image(Methodology_URL, caption="FDI Calculation Methodology")
 
-    # User inputs (Ws, Wp, threshold)
-    ws, wp, threshold_fdi = dynamic_sliders()
+    # Run Simulations Tab
+    with tab4:
+        ws, wp, threshold_fdi = dynamic_sliders()
 
-    # Button to run simulation
-    if st.button('Run FDI Simulation'):
-        df = pd.read_excel(INSTANCES_URL)  # Replace with actual file location
-        master_df = pd.read_excel(MASTER_URL)  # Replace with actual file location
+        # Button to run simulation
+        if st.button('Run FDI Simulation'):
+            df = pd.read_excel(INSTANCES_URL)  # Replace with actual file location
+            master_df = pd.read_excel(MASTER_URL)  # Replace with actual file location
 
-        df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
-        merged_df = merge_with_master(df, master_df)
+            df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
+            merged_df = merge_with_master(df, master_df)
 
-        # Calculate the top 10 hexagons by FDI_Count
-        top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
+            # Calculate the top 10 hexagons by FDI_Count
+            top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
 
-        # Save the simulation
-        sim_name = st.text_input("Enter a name for this simulation")
-        if sim_name and st.button("Save Simulation"):
-            save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
+            # Save the simulation
+            sim_name = st.text_input("Enter a name for this simulation")
+            if sim_name and st.button("Save Simulation"):
+                save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
             
-        # Display the top 10 hexagons
-        st.write("### Top 10 hexagons with highest FDI_Count")
-        st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', ' GRID_ID', 'FDI_Count']])
+            # Display the top 10 hexagons
+            st.write("### Top 10 hexagons with highest FDI_Count")
+            st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', 'GRID_ID', 'FDI_Count']])
 
-        # Plot the hexagons on a map
-        plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
+            # Plot the hexagons on a map
+            plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
 
 if __name__ == '__main__':
     main()
