@@ -96,6 +96,8 @@ def plot_clusters_on_map(clustered_hexagons, top_10_hex):
         gpd.GeoSeries([hex_polygon]).plot(ax=ax, color='red', edgecolor='black')
 
     ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
+    ax.set_xlim(-95.5, -94.5)  # Zoom in on Houston
+    ax.set_ylim(29.5, 30.5)
     st.pyplot(fig)
 
 # Function to save the simulation
@@ -138,8 +140,8 @@ def main():
     # Import to ArcPro Help Tab
     with tab1:
         st.write("### Instructions to import the Excel file into ArcPro")
-        st.image(Methodology_URL, caption="Step 1: Load the file")
-        st.image(GIS_Steps1_URL, caption="Step 2: Import settings")
+        st.markdown(f"![Step 1: Load the file]({Methodology_URL})")
+        st.markdown(f"![Step 2: Import settings]({GIS_Steps1_URL})")
 
     # Saved Simulations Tab
     with tab2:
@@ -149,7 +151,7 @@ def main():
     # Methodology Tab
     with tab3:
         st.write("### Methodology for FDI Calculations") 
-        st.image(Methodology_URL, caption="FDI Calculation Methodology")
+        st.markdown(f"![FDI Calculation Methodology]({Methodology_URL})")
 
     # Run Simulations Tab
     with tab4:
