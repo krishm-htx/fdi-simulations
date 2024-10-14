@@ -7,6 +7,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 import h3
 import contextily as ctx
+import os
 
 # URLs to the data files in your GitHub repository
 MASTER_URL = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
@@ -25,19 +26,11 @@ if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
 # Authentication: Simple password protection
-def authenticate():
-    st.sidebar.header("Login")
-    password = st.sidebar.text_input("Enter Password", type="password")
-    
-    # For debugging, you can print out or log the entered password
-    st.sidebar.write(f"Entered password: '{password}'")  # Remove this after debugging
-
-    if password.strip() == PASSWORD.strip():
+def authenticate(username, password):
+    if password.strip() == PASSWORD.strip() and username.strip() != "":
         return True
     else:
-        st.sidebar.error("Incorrect Password")
         return False
-
 
 # Function to dynamically adjust Ws and Wp sliders (Ws + Wp = 100)
 def dynamic_sliders():
@@ -145,55 +138,67 @@ def load_simulation():
 
 # Main Streamlit app function
 def main():
-    if authenticate():
-        st.title("FDI Simulation and Clustering App")
-        st.write("This app allows you to run FDI simulations for multiple weights and cluster H3 hexagons based on FDI values.")
+    st.title("FDI Simulation and Clustering App")
+    st.write("This app allows you to run FDI simulations for multiple weights and cluster H3 hexagons based on FDI values.")
 
-        # Tabs for different sections
-        tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology"])
+    # Add a username and password input
+    username = st.text_input("Enter your username")
+    password = st.text_input("Enter your password", type="password")
 
-        # Import to ArcPro Help Tab
-        with tab1:
-            st.write("### Instructions to import the Excel file into ArcPro")
-            st.image(ARC_HELP_IMG1, caption="Step 1: Load the file")
-            st.image(ARC_HELP_IMG2, caption="Step 2: Import settings")
+    # Add a button to authenticate
+    if st.button("Authenticate"):
+        if authenticate(username, password):
+            st.success("Authenticated successfully!")
+            # Store the username in a repository (e.g., a text file)
+            with open("users.txt", "a") as f:
+                f.write(f"{username}\n")
 
-        # Saved Simulations Tab
-        with tab2:
-            st.write("### View and Load Saved Simulations")
-            load_simulation()
+            # Tabs for different sections
+            tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology"])
 
-        # Methodology Tab
-        with tab3:
-            st.write("### Methodology for FDI Calculations") 
-            st.image(METHODOLOGY_IMG, caption="FDI Calculation Methodology")
+            # Import to ArcPro Help Tab
+            with tab1:
+                st.write("### Instructions to import the Excel file into ArcPro")
+                st.image(Methodology_URL, caption="Step 1: Load the file")
+                st.image(GIS_Steps1_URL, caption="Step 2: Import settings")
 
-        # User inputs (Ws, Wp, threshold)
-        ws, wp, threshold_fdi = dynamic_sliders()
+            # Saved Simulations Tab
+            with tab2:
+                st.write("### View and Load Saved Simulations")
+                load_simulation()
 
-        # Button to run simulation
-        if st.button('Run FDI Simulation'):
-            df = pd.read_excel("Instances_DATA.xlsx")  # Replace with actual file location
-            master_df = pd.read_excel("MasterGridObj.xlsx")  # Replace with actual file location
+            # Methodology Tab
+            with tab3:
+                st.write("### Methodology for FDI Calculations") 
+                st.image(Methodology_URL, caption="FDI Calculation Methodology")
 
-            df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
-            merged_df = merge_with_master(df, master_df)
+            # User inputs (Ws, Wp, threshold)
+            ws, wp, threshold_fdi = dynamic_sliders()
 
-            # Calculate the top 10 hexagons by FDI_Count
-            top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
+            # Button to run simulation
+            if st.button('Run FDI Simulation'):
+                df = pd.read_excel(INSTANCES_URL)  # Replace with actual file location
+                master_df = pd.read_excel(MASTER_URL)  # Replace with actual file location
 
-            # Save the simulation
-            sim_name = st.text_input("Enter a name for this simulation")
-            if sim_name and st.button("Save Simulation"):
-                save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
-                
-            # Display the top 10 hexagons
-            st.write("### Top 10 hexagons with highest FDI_Count")
-            st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', 'GRID_ID', 'FDI_Count']])
+                df = run_simulation(df, np.arange(ws, 101), threshold_fdi)
+                merged_df = merge_with_master(df, master_df)
 
-            # Plot the hexagons on a map
-            plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
+                # Calculate the top 10 hexagons by FDI_Count
+                top_10_hex = df.nlargest(10, 'FDI_Count')['GRID_ID'].tolist()
 
+                # Save the simulation
+                sim_name = st.text_input("Enter a name for this simulation")
+                if sim_name and st.button("Save Simulation"):
+                    save_simulation(sim_name, merged_df, ws, wp, threshold_fdi, top_10_hex)
+                    
+                # Display the top 10 hexagons
+                st.write("### Top 10 hexagons with highest FDI_Count")
+                st.write(df.nlargest(10, 'FDI_Count')[['OBJECTID', ' GRID_ID', 'FDI_Count']])
+
+                # Plot the hexagons on a map
+                plot_clusters_on_map(df['GRID_ID'].tolist(), top_10_hex)
+        else:
+            st.error("Incorrect username or password")
 
 if __name__ == '__main__':
     main()
