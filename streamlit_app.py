@@ -143,7 +143,7 @@ def load_simulation():
 def main():
     if authenticate():
         st.title("FDI Simulation and Clustering App")
-        st.write("This app allows you to run FDI simulations and cluster H3 hexagons based on FDI values.")
+        st.write("This app allows you to run FDI simulations for multiple weights and cluster H3 hexagons based on FDI values.")
 
         # Tabs for different sections
         tab1, tab2, tab3 = st.tabs(["Import to ArcPro Help", "Saved Simulations", "Methodology"])
