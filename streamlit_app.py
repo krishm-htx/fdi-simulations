@@ -29,11 +29,15 @@ def authenticate():
     st.sidebar.header("Login")
     password = st.sidebar.text_input("Enter Password", type="password")
     
-    if password == PASSWORD:
+    # For debugging, you can print out or log the entered password
+    st.sidebar.write(f"Entered password: '{password}'")  # Remove this after debugging
+
+    if password.strip() == PASSWORD.strip():
         return True
     else:
         st.sidebar.error("Incorrect Password")
         return False
+
 
 # Function to dynamically adjust Ws and Wp sliders (Ws + Wp = 100)
 def dynamic_sliders():
@@ -161,7 +165,7 @@ def main():
 
         # Methodology Tab
         with tab3:
-            st.write("### Methodology for FDI Calculations")
+            st.write("### Methodology for FDI Calculations") 
             st.image(METHODOLOGY_IMG, caption="FDI Calculation Methodology")
 
         # User inputs (Ws, Wp, threshold)
