@@ -92,12 +92,14 @@ def cluster_hexagons(df):
             for other_index, other_row in df.iterrows():
                 if other_index != index:
                     other_hex_id = other_row['GRID_ID']
-                    # Use h3_distance to check if they are neighbors
-                    if h3.h3_distance(hex_id, other_hex_id) == 1:
+                    # Use h3.k_ring_distances to check if they are neighbors (within distance 1)
+                    k_ring = h3.k_ring_distances(hex_id, 1)  # Get hexagons within distance 1
+                    if other_hex_id in k_ring[1]:  # k_ring[1] contains hexagons at distance 1
                         neighbors.append(other_hex_id)
             if len(neighbors) >= 2:  # at least 2 neighbors with FDI count > 0
                 clustered_hexagons.append(hex_id)
     return clustered_hexagons
+
 
 
 # Load the instances data and master data
