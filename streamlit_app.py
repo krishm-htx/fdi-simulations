@@ -6,6 +6,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 import h3
 import contextily as ctx
+import io
 
 # Load your PDFs and data from GitHub or local repo
 PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
