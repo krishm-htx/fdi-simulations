@@ -57,13 +57,14 @@ def hexagons_to_geodataframe(hex_ids):
     
     for hex_id in hex_ids:
         # Convert hex_id to geo boundary (lat, lng pairs)
-        hex_boundary = h3.hex_boundary(hex_id, geo_json=True)  # This is the updated function
+        hex_boundary = h3.h3_to_geo_boundary(hex_id, geo_json=True)  # This should work
         hex_polygon = Polygon(hex_boundary)  # Convert to Shapely Polygon
         hex_polygons.append(hex_polygon)
 
     # Create a GeoDataFrame from the hexagons
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
     return gdf
+
 
 
 # Function to plot clustered hexagons on a map
