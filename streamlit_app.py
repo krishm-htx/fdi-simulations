@@ -8,7 +8,6 @@ import h3
 import contextily as ctx
 import io
 import folium
-import json
 from streamlit_folium import folium_static
 
 # Load your PDFs and data from GitHub or local repo
@@ -65,16 +64,6 @@ def hexagons_to_geodataframe(hex_ids):
         hex_polygons.append(hex_polygon)
 
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
-    
-    # Convert all columns to JSON serializable types
-    for col in gdf.columns:
-        if gdf[col].dtype.name == 'object':
-            gdf[col] = gdf[col].astype(str)
-        elif 'float' in gdf[col].dtype.name:
-            gdf[col] = gdf[col].astype(float)
-        elif 'int' in gdf[col].dtype.name:
-            gdf[col] = gdf[col].astype(int)
-    
     return gdf
 
 # Function to plot clustered hexagons on a map
@@ -84,47 +73,51 @@ def plot_clusters_on_map(clustered_hexagons):
 
     # Create a GeoDataFrame of hexagons
     gdf = hexagons_to_geodataframe(clustered_hexagons)
-    
-    print(f"Number of hexagons in GeoDataFrame: {len(gdf)}")
 
     # Add hexagons to the map
-    for idx, row in gdf.iterrows():
-        try:
-            geojson = mapping(row['geometry'])
-            folium.GeoJson(
-                geojson,
-                style_function=lambda x: {
-                    'fillColor': 'blue',
-                    'color': 'red',
-                    'weight': 2,
-                    'fillOpacity': 0.7,
-                }
-            ).add_to(m)
-            
-            # Add a marker at the center of each hexagon for visibility
-            centroid = row['geometry'].centroid
-            folium.CircleMarker(
-                location=[centroid.y, centroid.x],
-                radius=2,
-                color='red',
-                fill=True,
-                fillColor='red'
-            ).add_to(m)
-        except Exception as e:
-            st.write(f"Error adding hexagon {idx}: {e}")
-
-    # Fit the map to the bounds of the hexagons
-    if not gdf.empty:
-        m.fit_bounds(gdf.total_bounds)
+    for _, row in gdf.iterrows():
+        folium.GeoJson(
+            row['geometry'],
+            style_function=lambda x: {
+                'fillColor': 'blue',
+                'color': 'black',
+                'weight': 1,
+                'fillOpacity': 0.5,
+            }
+        ).add_to(m)
 
     # Display the map
     folium_static(m)
 
 def cluster_hexagons(df):
     clustered_hexagons = []
-    for _, row in df.iterrows():
-        if row['FDI_Count'] > 1:
-            clustered_hexagons.append(row['GRID_ID'])
+    hexagons_checked = set()  # To avoid reprocessing already clustered hexagons
+    
+    # Filter for hexagons with FDI_Count > 1
+    df_filtered = df[df['FDI_Count'] > 1].copy()
+    
+    for index, row in df_filtered.iterrows():
+        hex_id = row['GRID_ID']
+        
+        # Skip already checked hexagons
+        if hex_id in hexagons_checked:
+            continue
+        
+        # Find neighbors for the current hexagon
+        neighbors = []
+        nearby_hexagons = h3.grid_disk(hex_id, 1)  # Get neighboring hexagons
+
+        for other_index, other_row in df_filtered.iterrows():
+            other_hex_id = other_row['GRID_ID']
+            
+            # Check if the other hexagon is a neighbor (distance 1)
+            if other_index != index and other_hex_id in nearby_hexagons:
+                neighbors.append(other_hex_id)
+        
+        # If it has 2 or more neighbors, it's a cluster
+        if len(neighbors) >= 2:
+            clustered_hexagons.append(hex_id)
+            hexagons_checked.update(neighbors)  # Mark neighbors as checked
     return clustered_hexagons
 
 # Load the instances data and master data
@@ -175,39 +168,28 @@ def main():
 
         # Run simulation when button is clicked
         if st.button("Run Simulation"):
-            try:
-                W_s_range = np.arange(ws_start, ws_end + 1)
-                df, histogram_data = run_simulation(df, W_s_range, threshold)
-                
-                # Display results
-                st.write(df)
-                plot_histogram(histogram_data, threshold)
+            W_s_range = np.arange(ws_start, ws_end + 1)
+            df, histogram_data = run_simulation(df, W_s_range, threshold)
+            
+            # Display results
+            st.write(df)
+            plot_histogram(histogram_data, threshold)
 
             # Download simulation results
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False)
-                output.seek(0)
-                st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
-        # Optionally, plot clusters and allow download
-                clustered_hexagons = cluster_hexagons(df)
-                st.write(f"Number of clustered hexagons: {len(clustered_hexagons)}")
-                if clustered_hexagons:
-                    st.subheader("Clustered Hexagons Over Houston, TX")
-                    try:
-                        plot_clusters_on_map(clustered_hexagons)
-                    except Exception as e:
-                        st.error(f"Error plotting clusters: {e}")
-                        st.write("Clustered hexagons:", clustered_hexagons[:10])  # Display first 10 for debugging
-                else:
-                    st.write("No clusters found based on current criteria.")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-                st.write("DataFrame info:")
-                st.write(df.info())
-                st.write("DataFrame head:")
-                st.write(df.head())
-            
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            output.seek(0)
+            st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
+
+            # Optionally, plot clusters and allow download
+            clustered_hexagons = cluster_hexagons(df)
+            if clustered_hexagons:
+                st.subheader("Clustered Hexagons Over Houston, TX")
+                plot_clusters_on_map(clustered_hexagons)
+            else:
+                st.write("No clusters found based on current criteria.")
+    
     # Tab 2: View Saved Results
     with tab2:
         st.header("View Saved Results")
