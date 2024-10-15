@@ -87,7 +87,7 @@ def plot_clusters_on_map(clustered_hexagons):
         ).add_to(m)
 
     # Display the map
-    folium_static(m)
+    st_folium(m)
 
 def cluster_hexagons(df):
     clustered_hexagons = []
