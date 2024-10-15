@@ -209,11 +209,11 @@ def main():
                 plot_histogram(histogram_data, threshold)
 
             # Download simulation results
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False)
-            output.seek(0)
-            st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False)
+                output.seek(0)
+                st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
         # Optionally, plot clusters and allow download
                 clustered_hexagons = cluster_hexagons(df)
                 st.write(f"Number of clustered hexagons: {len(clustered_hexagons)}")
