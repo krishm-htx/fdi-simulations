@@ -73,18 +73,34 @@ def plot_clusters_on_map(clustered_hexagons):
 
     # Create a GeoDataFrame of hexagons
     gdf = hexagons_to_geodataframe(clustered_hexagons)
+    
+    print(f"Number of hexagons in GeoDataFrame: {len(gdf)}")
 
     # Add hexagons to the map
-    for _, row in gdf.iterrows():
+    for idx, row in gdf.iterrows():
         folium.GeoJson(
             row['geometry'],
             style_function=lambda x: {
                 'fillColor': 'blue',
-                'color': 'black',
-                'weight': 1,
-                'fillOpacity': 0.5,
+                'color': 'red',
+                'weight': 2,
+                'fillOpacity': 0.7,
             }
         ).add_to(m)
+        
+        # Add a marker at the center of each hexagon for visibility
+        centroid = row['geometry'].centroid
+        folium.CircleMarker(
+            location=[centroid.y, centroid.x],
+            radius=2,
+            color='red',
+            fill=True,
+            fillColor='red'
+        ).add_to(m)
+
+    # Fit the map to the bounds of the hexagons
+    if not gdf.empty:
+        m.fit_bounds(gdf.total_bounds)
 
     # Display the map
     folium_static(m)
@@ -118,6 +134,7 @@ def cluster_hexagons(df):
         if len(neighbors) >= 2:
             clustered_hexagons.append(hex_id)
             hexagons_checked.update(neighbors)  # Mark neighbors as checked
+        print(f"Number of clustered hexagons: {len(clustered_hexagons)}")
     return clustered_hexagons
 
 # Load the instances data and master data
@@ -184,6 +201,7 @@ def main():
 
             # Optionally, plot clusters and allow download
             clustered_hexagons = cluster_hexagons(df)
+            st.write(f"Number of clustered hexagons: {len(clustered_hexagons)}")
             if clustered_hexagons:
                 st.subheader("Clustered Hexagons Over Houston, TX")
                 plot_clusters_on_map(clustered_hexagons)
