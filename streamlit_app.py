@@ -83,34 +83,34 @@ def plot_clusters_on_map(clustered_hexagons):
 
 def cluster_hexagons(df):
     clustered_hexagons = []
-    hexagons_checked = set()  # To keep track of already clustered hexagons
+    hexagons_checked = set()  # To avoid reprocessing already clustered hexagons
     
-    for index, row in df.iterrows():
+    # Filter for hexagons with FDI_Count > 1
+    df_filtered = df[df['FDI_Count'] > 1].copy()
+    
+    for index, row in df_filtered.iterrows():
         hex_id = row['GRID_ID']
-        fdi_count = row['FDI_Count']
         
-        # Skip hexagons already checked
+        # Skip already checked hexagons
         if hex_id in hexagons_checked:
             continue
         
-        if fdi_count > 0:
-            neighbors = []
-            
-            # Use h3.grid_disk to get hexagons within distance 1 (i.e., neighbors)
-            nearby_hexagons = h3.grid_disk(hex_id, 1)
-            
-            for other_index, other_row in df.iterrows():
-                other_hex_id = other_row['GRID_ID']
-                
-                # Only check if it's not the same hex and is within the nearby disk
-                if other_index != index and other_hex_id in nearby_hexagons:
-                    neighbors.append(other_hex_id)
-            
-            # If at least 2 neighbors, this is a cluster
-            if len(neighbors) >= 2:
-                clustered_hexagons.append(hex_id)
-                hexagons_checked.update(neighbors)  # Mark neighbors as checked
+        # Find neighbors for the current hexagon
+        neighbors = []
+        nearby_hexagons = h3.grid_disk(hex_id, 1)  # Get neighboring hexagons
 
+        for other_index, other_row in df_filtered.iterrows():
+            other_hex_id = other_row['GRID_ID']
+            
+            # Check if the other hexagon is a neighbor (distance 1)
+            if other_index != index and other_hex_id in nearby_hexagons:
+                neighbors.append(other_hex_id)
+        
+        # If it has 2 or more neighbors, it's a cluster
+        if len(neighbors) >= 2:
+            clustered_hexagons.append(hex_id)
+            hexagons_checked.update(neighbors)  # Mark neighbors as checked
+    
     return clustered_hexagons
 
 
