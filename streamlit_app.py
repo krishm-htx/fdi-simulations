@@ -64,7 +64,6 @@ def hexagons_to_geodataframe(hex_ids):
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
     return gdf
 
-
 # Function to plot clustered hexagons on a map
 def plot_clusters_on_map(clustered_hexagons):
     gdf = hexagons_to_geodataframe(clustered_hexagons)
@@ -82,6 +81,23 @@ def plot_clusters_on_map(clustered_hexagons):
     plt.title("Clustered H3 Hexagons Over Houston, TX")
     st.pyplot(fig)
 
+# Function to cluster hexagons
+def cluster_hexagons(df):
+    clustered_hexagons = []
+    for index, row in df.iterrows():
+        hex_id = row['GRID_ID']
+        fdi_count = row['FDI_Count']
+        if fdi_count > 0:
+            neighbors = []
+            for other_index, other_row in df.iterrows():
+                if other_index != index:
+                    other_hex_id = other_row['GRID_ID']
+                    if h3.h3_indexes_are_neighbors(hex_id, other_hex_id):
+                        neighbors.append(other_hex_id)
+            if len(neighbors) >= 2:  # at least 2 neighbors with FDI count > 0
+                clustered_hexagons.append(hex_id)
+    return clustered_hexagons
+
 # Load the instances data and master data
 @st.cache
 def load_data():
@@ -89,8 +105,7 @@ def load_data():
     master_df = pd.read_excel(MASTER_FILE_PATH)
     return instances_df, master_df
 
-# Main Streamlit App
-st.title('FDI Simulation App')
+# Main Streamlit App st.title('FDI Simulation App')
 
 # Create Tabs
 tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
@@ -129,7 +144,7 @@ with tab1:
         st.download_button('Download Simulation Results', data=open(output_file, 'rb'), file_name=output_file)
 
         # Optionally, plot clusters and allow download
-        clustered_hexagons = df[df['FDI_Count'] > 0]['GRID_ID'].tolist()
+        clustered_hexagons = cluster_hexagons(df)
         plot_clusters_on_map(clustered_hexagons)
 
 # Tab 2: View Saved Results
