@@ -111,12 +111,9 @@ def cluster_hexagons(df):
         if len(neighbors) >= 2:
             clustered_hexagons.append(hex_id)
             hexagons_checked.update(neighbors)  # Mark neighbors as checked
+        st.write('checking')
     
     return clustered_hexagons
-
-
-
-
 
 # Load the instances data and master data
 @st.cache
