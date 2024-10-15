@@ -57,7 +57,7 @@ def hexagons_to_geodataframe(hex_ids):
     
     for hex_id in hex_ids:
         # Convert hex_id to geo boundary (lat, lng pairs)
-        hex_boundary = h3.cell_to_boundary(hex_id, geo_json=True)  # Updated function name for h3-py 4.x
+        hex_boundary = h3.cell_to_boundary(hex_id, geo_json=False)  # Updated function name for h3-py 4.x
         hex_polygon = Polygon(hex_boundary)  # Convert to Shapely Polygon
         hex_polygons.append(hex_polygon)
 
@@ -111,8 +111,6 @@ def cluster_hexagons(df):
         if len(neighbors) >= 2:
             clustered_hexagons.append(hex_id)
             hexagons_checked.update(neighbors)  # Mark neighbors as checked
-        st.write('checking')
-    
     return clustered_hexagons
 
 # Load the instances data and master data
