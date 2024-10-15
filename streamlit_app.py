@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from shapely.geometry import Polygon
-import h3
+from h3 import h3
 import contextily as ctx
 
 # Load your PDFs and data from GitHub or local repo
