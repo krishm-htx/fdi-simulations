@@ -7,6 +7,8 @@ from shapely.geometry import Polygon
 import h3
 import contextily as ctx
 import io
+import folium
+from streamlit_folium import folium_static
 
 # Load your PDFs and data from GitHub or local repo
 PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
@@ -57,31 +59,35 @@ def hexagons_to_geodataframe(hex_ids):
     hex_polygons = []
     
     for hex_id in hex_ids:
-        # Convert hex_id to geo boundary (lat, lng pairs)
-        hex_boundary = h3.cell_to_boundary(hex_id)  # Updated function name for h3-py 4.x
-        hex_polygon = Polygon(hex_boundary)  # Convert to Shapely Polygon
+        hex_boundary = h3.cell_to_boundary(hex_id)
+        hex_polygon = Polygon(hex_boundary)
         hex_polygons.append(hex_polygon)
 
-    # Create a GeoDataFrame from the hexagons
     gdf = gpd.GeoDataFrame(geometry=hex_polygons, crs="EPSG:4326")
     return gdf
 
 # Function to plot clustered hexagons on a map
 def plot_clusters_on_map(clustered_hexagons):
+    # Create a map centered on Houston
+    m = folium.Map(location=[29.7604, -95.3698], zoom_start=10)
+
+    # Create a GeoDataFrame of hexagons
     gdf = hexagons_to_geodataframe(clustered_hexagons)
-    gdf = gdf.to_crs(epsg=3857)  # Reproject to Web Mercator
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    # Add hexagons to the map
+    for _, row in gdf.iterrows():
+        folium.GeoJson(
+            row['geometry'],
+            style_function=lambda x: {
+                'fillColor': 'blue',
+                'color': 'black',
+                'weight': 1,
+                'fillOpacity': 0.5,
+            }
+        ).add_to(m)
 
-    # Plot hexagons
-    gdf.plot(ax=ax, color='blue', alpha=0.5, edgecolor='black')
-
-    # Add basemap (OpenStreetMap)
-    ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
-
-    # Set title and show plot
-    plt.title("Clustered H3 Hexagons Over Houston, TX")
-    st.pyplot(fig)
+    # Display the map
+    folium_static(m)
 
 def cluster_hexagons(df):
     clustered_hexagons = []
@@ -178,7 +184,11 @@ def main():
 
             # Optionally, plot clusters and allow download
             clustered_hexagons = cluster_hexagons(df)
-            plot_clusters_on_map(clustered_hexagons)
+            if clustered_hexagons:
+                st.subheader("Clustered Hexagons Over Houston, TX")
+                plot_clusters_on_map(clustered_hexagons)
+            else:
+                st.write("No clusters found based on current criteria.")
     
     # Tab 2: View Saved Results
     with tab2:
