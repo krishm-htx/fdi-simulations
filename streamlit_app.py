@@ -114,11 +114,15 @@ def cluster_hexagons(df):
     return clustered_hexagons
 
 # Load the instances data and master data
-@st.cache
+@st.cache_data
 def load_data():
-    instances_df = pd.read_excel(INSTANCES_FILE_PATH)
-    master_df = pd.read_excel(MASTER_FILE_PATH)
-    return instances_df, master_df
+    try:
+        instances_df = pd.read_excel(INSTANCES_FILE_PATH)
+        master_df = pd.read_excel(MASTER_FILE_PATH)
+        return instances_df, master_df
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
 
 # Main Streamlit App st.title('FDI Simulation App')
 
@@ -128,56 +132,72 @@ tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology
 # Load data
 df, master_df = load_data()
 
-# Tab 1: Run Simulation
-with tab1:
-    st.header("Run FDI Simulation")
+def main():
+    st.title('FDI Simulation App')
 
-    # Sliders for W_s range: start point and end point
-    ws_start = st.slider('Select W_s Start Point:', 0, 100, 50)
-    ws_end = st.slider('Select W_s End Point:', ws_start, 100, 100)
-    
-    # Automatically calculate and display W_p as 100 - W_s
-    wp_start = 100 - ws_start
-    wp_end = 100 - ws_end
-    st.write(f"W_p range: {wp_start} to {wp_end}")
-    
-    # Input for FDI threshold
-    threshold = st.number_input('Set FDI Threshold:', value=4.8)
+    # Create Tabs
+    tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
 
-    # Run simulation when button is clicked
-    if st.button("Run Simulation"):
-        W_s_range = np.arange(ws_start, ws_end + 1)
-        df, histogram_data = run_simulation(df, W_s_range, threshold)
+    # Load data
+    df, master_df = load_data()
+    if df is None or master_df is None:
+        st.stop()
+
+    # Tab 1: Run Simulation
+    with tab1:
+        st.header("Run FDI Simulation")
+    
+        # Sliders for W_s range: start point and end point
+        ws_start = st.slider('Select W_s Start Point:', 0, 100, 50)
+        ws_end = st.slider('Select W_s End Point:', ws_start, 100, 100)
         
-        # Display results
-        st.write(df)
-        plot_histogram(histogram_data, threshold)
+        # Automatically calculate and display W_p as 100 - W_s
+        wp_start = 100 - ws_start
+        wp_end = 100 - ws_end
+        st.write(f"W_p range: {wp_start} to {wp_end}")
+        
+        # Input for FDI threshold
+        threshold = st.number_input('Set FDI Threshold:', value=4.8)
 
-        # Download simulation results
-        output_file = 'fdi_simulation_results.xlsx'
-        df.to_excel(output_file, index=False)
-        st.download_button('Download Simulation Results', data=open(output_file, 'rb'), file_name=output_file)
+        # Run simulation when button is clicked
+        if st.button("Run Simulation"):
+            W_s_range = np.arange(ws_start, ws_end + 1)
+            df, histogram_data = run_simulation(df, W_s_range, threshold)
+            
+            # Display results
+            st.write(df)
+            plot_histogram(histogram_data, threshold)
 
-        # Optionally, plot clusters and allow download
-        clustered_hexagons = cluster_hexagons(df)
-        plot_clusters_on_map(clustered_hexagons)
+            # Download simulation results
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False)
+            output.seek(0)
+            st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
 
-# Tab 2: View Saved Results
-with tab2:
-    st.header("View Saved Results")
-    saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
-    if saved_file is not None:
-        saved_df = pd.read_excel(saved_file)
-        st.write(saved_df)
-
-        # Plot histogram and clusters from saved results
-        st.write("Histogram of Saved Results")
-        plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
-
-# Tab 3: Methodology & Help
-with tab3:
-    st.header("Documentation")
-    st.write("Download the following PDFs for more information:")
+            # Optionally, plot clusters and allow download
+            clustered_hexagons = cluster_hexagons(df)
+            plot_clusters_on_map(clustered_hexagons)
     
-    st.write("[Methodology PDF](%s)" % PDF_METHOD_PATH)
-    st.write("[Help PDF for Importing to ArcGIS Pro](%s)" % PDF_HELP_PATH)
+    # Tab 2: View Saved Results
+    with tab2:
+        st.header("View Saved Results")
+        saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
+        if saved_file is not None:
+            saved_df = pd.read_excel(saved_file)
+            st.write(saved_df)
+    
+            # Plot histogram and clusters from saved results
+            st.write("Histogram of Saved Results")
+            plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
+    
+    # Tab 3: Methodology & Help
+    with tab3:
+        st.header("Documentation")
+        st.write("Download the following PDFs for more information:")
+        
+        st.write("[Methodology PDF](%s)" % PDF_METHOD_PATH)
+        st.write("[Help PDF for Importing to ArcGIS Pro](%s)" % PDF_HELP_PATH)
+        
+if __name__ == "__main__":
+    main()
