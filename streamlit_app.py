@@ -83,11 +83,11 @@ def plot_clusters_on_map(clustered_hexagons):
                 'color': 'black',
                 'weight': 1,
                 'fillOpacity': 0.5,
-            }
+            }            
         ).add_to(m)
 
     # Display the map
-    st_folium(m)
+    m
 
 def cluster_hexagons(df):
     clustered_hexagons = []
