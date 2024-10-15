@@ -81,24 +81,38 @@ def plot_clusters_on_map(clustered_hexagons):
     plt.title("Clustered H3 Hexagons Over Houston, TX")
     st.pyplot(fig)
 
-# Function to cluster hexagons
 def cluster_hexagons(df):
     clustered_hexagons = []
+    hexagons_checked = set()  # To keep track of already clustered hexagons
+    
     for index, row in df.iterrows():
         hex_id = row['GRID_ID']
         fdi_count = row['FDI_Count']
+        
+        # Skip hexagons already checked
+        if hex_id in hexagons_checked:
+            continue
+        
         if fdi_count > 0:
             neighbors = []
+            
+            # Use h3.grid_disk to get hexagons within distance 1 (i.e., neighbors)
+            nearby_hexagons = h3.grid_disk(hex_id, 1)
+            
             for other_index, other_row in df.iterrows():
-                if other_index != index:
-                    other_hex_id = other_row['GRID_ID']
-                    # Use h3.grid_disk to get hexagons within distance 1
-                    neighbors_in_disk = h3.grid_disk(hex_id, 1)  # Get all hexagons within 1 step
-                    if other_hex_id in neighbors_in_disk:  # Check if the other hexagon is in the 1-step disk
-                        neighbors.append(other_hex_id)
-            if len(neighbors) >= 2:  # at least 2 neighbors with FDI count > 0
+                other_hex_id = other_row['GRID_ID']
+                
+                # Only check if it's not the same hex and is within the nearby disk
+                if other_index != index and other_hex_id in nearby_hexagons:
+                    neighbors.append(other_hex_id)
+            
+            # If at least 2 neighbors, this is a cluster
+            if len(neighbors) >= 2:
                 clustered_hexagons.append(hex_id)
+                hexagons_checked.update(neighbors)  # Mark neighbors as checked
+
     return clustered_hexagons
+
 
 
 
