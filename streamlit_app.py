@@ -90,7 +90,7 @@ def plot_clusters_on_map(clustered_hexagons):
     # Add hexagons to the map
     for idx, row in gdf.iterrows():
         try:
-            geojson = json.loads(row['geometry'].to_json())
+            geojson = mapping(row['geometry'])
             folium.GeoJson(
                 geojson,
                 style_function=lambda x: {
@@ -122,34 +122,9 @@ def plot_clusters_on_map(clustered_hexagons):
 
 def cluster_hexagons(df):
     clustered_hexagons = []
-    hexagons_checked = set()  # To avoid reprocessing already clustered hexagons
-    
-    # Filter for hexagons with FDI_Count > 1
-    df_filtered = df[df['FDI_Count'] > 1].copy()
-    
-    for index, row in df_filtered.iterrows():
-        hex_id = row['GRID_ID']
-        
-        # Skip already checked hexagons
-        if hex_id in hexagons_checked:
-            continue
-        
-        # Find neighbors for the current hexagon
-        neighbors = []
-        nearby_hexagons = h3.grid_disk(hex_id, 1)  # Get neighboring hexagons
-
-        for other_index, other_row in df_filtered.iterrows():
-            other_hex_id = other_row['GRID_ID']
-            
-            # Check if the other hexagon is a neighbor (distance 1)
-            if other_index != index and other_hex_id in nearby_hexagons:
-                neighbors.append(other_hex_id)
-        
-        # If it has 2 or more neighbors, it's a cluster
-        if len(neighbors) >= 2:
-            clustered_hexagons.append(hex_id)
-            hexagons_checked.update(neighbors)  # Mark neighbors as checked
-        print(f"Number of clustered hexagons: {len(clustered_hexagons)}")
+    for _, row in df.iterrows():
+        if row['FDI_Count'] > 1:
+            clustered_hexagons.append(row['GRID_ID'])
     return clustered_hexagons
 
 # Load the instances data and master data
@@ -219,11 +194,19 @@ def main():
                 st.write(f"Number of clustered hexagons: {len(clustered_hexagons)}")
                 if clustered_hexagons:
                     st.subheader("Clustered Hexagons Over Houston, TX")
-                    plot_clusters_on_map(clustered_hexagons)
+                    try:
+                        plot_clusters_on_map(clustered_hexagons)
+                    except Exception as e:
+                        st.error(f"Error plotting clusters: {e}")
+                        st.write("Clustered hexagons:", clustered_hexagons[:10])  # Display first 10 for debugging
                 else:
                     st.write("No clusters found based on current criteria.")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+                st.write("DataFrame info:")
+                st.write(df.info())
+                st.write("DataFrame head:")
+                st.write(df.head())
             
     # Tab 2: View Saved Results
     with tab2:
