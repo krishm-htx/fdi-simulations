@@ -134,6 +134,7 @@ def find_clusters(hex_list, min_cluster_size=3):
     return clusters
 
 # Load the instances data and master data
+# Load the instances data and master data
 @st.cache_data
 def load_data():
     try:
@@ -153,10 +154,6 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    #st.set_page_config(layout="wide", page_title="FDI Simulation App")
-    if 'reset' not in st.session_state:
-        st.session_state.reset = False
-        
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
@@ -167,29 +164,18 @@ def main():
         w_structural = st.slider(
             "Weight of Structural Flooding Instances (W_s)",
             0, 100, (50, 100), 
-            help="Slide to set the range for the weight of structural flooding instances.",
-            key = "w_structural"
+            help="Slide to set the range for the weight of structural flooding instances."
         )
         st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
         
         threshold = st.number_input(
             'FDI Threshold:', 
             value=4.8, 
-            help="Set the threshold for FDI calculations.",
-            key = "threshold"
+            help="Set the threshold for FDI calculations."
         )
         
-        if st.button("Reset Parameters"):
-            st.session_state.reset = True
-            st.experimental_rerun()
-        
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
-     # Reset logic
-    if st.session_state.reset:
-        st.session_state.w_structural = (50, 100)
-        st.session_state.threshold = 4.8
-        st.session_state.reset = False
-        st.experimental_rerun()
+
     # Create Tabs
     tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
 
@@ -220,7 +206,9 @@ def main():
 
             # Plot histogram
             st.subheader("FDI Frequency Distribution")
-            plot_histogram(histogram_data, threshold)
+             with st.spinner("Generating histogram..."):
+                plot_histogram(histogram_data, threshold)
+                time.sleep(1)
 
             # Download simulation results
             output = io.BytesIO()
@@ -245,8 +233,23 @@ def main():
             df_filtered = df[df['cluster'] > 0].copy()
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
 
+            # Download clusters
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df_filtered.to_excel(writer, index=False)
+            output.seek(0)
+            st.download_button(
+                'Download Clusters', 
+                data=output, 
+                file_name='fdi_clusters.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+
+            # Plot clusters on map
             st.subheader("Clustered Hexagons Over Houston, TX")
-            plot_clusters_on_map(df_filtered)
+            with st.spinner("Generating map..."):
+                plot_clusters_on_map(df_filtered)
+                time.sleep(1)
 
     # Tab 2: View Saved Results
     with tab2:
@@ -257,7 +260,9 @@ def main():
             st.dataframe(saved_df)
     
             st.subheader("Histogram of Saved Results")
-            plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
+            with st.spinner("Generating histogram..."):
+                plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
+                time.sleep(1)
 
     # Tab 3: Documentation
     with tab3:
@@ -278,7 +283,7 @@ def main():
         st.subheader("Import to ArcPro")
         with st.expander("View Import Instructions", expanded=False):
             st.write("Step 1: Copy the Layer H3_R9\nAction: In the Drawing Order panel, right-click the layer H3_R9.\nSelect: From the context menu, choose Copy.\nPaste: Right-click in an empty area and select Paste to create a duplicate of the H3_R9 layer.\n\nStep 2: Add New Data\nNavigate: In the ribbon at the top, under the Map tab, select Add Data.\nFile Path: Go to your download folder and select the file updated_FDI_results_with_master.\nSheet Selection: Choose Sheet 1$ from the file to import the data.\n\nStep 3: Join Data to H3_R9_copy\nLocate: Find the newly created copy H3_R9_copy in the Drawing Order.\nRight-click: On the H3_R9_copy layer, select Joins and Relates and click Add Join.\n\nStep 4: Set Join Fields\nInput Field: Set the Input Table as H3_R9_copy and the Input Field as OBJECT ID.\nJoin Table: Select Sheet1 (imported in Step 2) as the Join Table.\nJoin Field: Ensure the Join Field is OBJECTID in both tables.\n\nStep 5: Symbology\nOpen Symbology: Go to the H3_R9_copy layer, right-click, and choose Symbology.\nChoose Symbology Type: Set the type to Graduated Colors.\nSet Field: In the field options, select Cluster_Assigned to apply color gradation based on clusters.\n\nStep 6: View Results\nAfter applying the symbology, the map will display hexagons color-coded based on the cluster assignments, showing the distribution of the data visually across the region.")
-            st .download_button(
+            st.download_button(
                 'Download Import Instructions', 
                 data=BytesIO(requests.get(PDF_HELP_PATH).content), 
                 file_name='Excel_Import_to_ArcPro.pdf', 
