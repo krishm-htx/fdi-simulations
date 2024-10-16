@@ -135,7 +135,7 @@ def find_clusters(hex_list, min_cluster_size=3):
     return clusters
 
 def save_metadata(metadata):
-    metadata_file = "/mnt/data/simulations_metadata.json"  # Path to the metadata file
+    metadata_file = "/mnt/data/simulations_metadata.json"
 
     # Check if metadata file exists, create if not
     if not os.path.exists(metadata_file):
@@ -157,8 +157,17 @@ def load_saved_simulations():
     metadata_file = "/mnt/data/simulations_metadata.json"
     if os.path.exists(metadata_file):
         with open(metadata_file, 'r') as f:
-            return json.load(f)
+            loaded_data = json.load(f)
+            print("Loaded simulations metadata:", loaded_data)  # Debug statement
+            return loaded_data
     return []
+
+# In your main function when loading saved simulations
+saved_simulations = load_saved_simulations()
+if saved_simulations:
+    print("Saved simulations found:", saved_simulations)  # Debug statement
+else:
+    print("No saved simulations found.")  # Debug statement
 # Load the instances data and master data
 @st.cache_data
 def load_data():
