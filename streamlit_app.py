@@ -12,6 +12,7 @@ from streamlit_folium import folium_static
 import requests
 from io import BytesIO
 import time
+import plotly.express as px
 
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
@@ -73,46 +74,19 @@ def hexagons_to_geodataframe(hex_ids):
     return gdf
 
 # Function to plot clustered hexagons on a map
-def plot_clusters_on_map(df_filtered):
-    center_lat = df_filtered['lat'].mean()
-    center_lon = df_filtered['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+def plot_clusters_on_map(df):
+    fig = px.scatter_mapbox(df, 
+                            lat="lat", 
+                            lon="lon", 
+                            color="FDI_Count",  # Use FDI_Count for coloring
+                            color_continuous_scale="RdYlGn_r",  # Red-Yellow-Green scale, reversed
+                            range_color=(df['FDI_Count'].min(), df['FDI_Count'].max()),  # Set color range
+                            size_max=15, 
+                            zoom=10,
+                            mapbox_style="open-street-map")
 
-    # Color scale for FDI count
-    def get_color(fdi_count):
-        if fdi_count <= 25:
-            return 'green'
-        elif fdi_count <= 50:
-            return 'yellow'
-        else:
-            return 'red'
-
-    for _, row in df_filtered.iterrows():
-        hexagon = h3.cell_to_boundary(row['GRID_ID'])
-        folium.Polygon(
-            locations=hexagon,
-            popup=f"Cluster: {row['cluster']}<br>FDI Count: {row['FDI_Count']}",
-            color='black',
-            weight=1,
-            fill=True,
-            fill_color=get_color(row['FDI_Count']),
-            fill_opacity=0.7
-        ).add_to(m)
-
-    # Add a legend
-    legend_html = '''
-         <div style="position: fixed; 
-                     bottom: 50px; left: 50px; width: 120px; height: 90px; 
-                     border:2px solid grey; z-index:9999; font-size:14px;
-                     ">&nbsp; FDI Count <br>
-             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:green"></i>&nbsp; 0-25 <br>
-             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:yellow"></i>&nbsp; 26-50 <br>
-             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:red"></i>&nbsp; 51+ 
-         </div>
-         '''
-    m.get_root().html.add_child(folium.Element(legend_html))
-
-    folium_static(m)
+    fig.update_layout(height=600, margin={"r":0,"t":0,"l":0,"b":0})
+    st.plotly_chart(fig, use_container_width=True)
 
 def find_clusters(hex_list, min_cluster_size=3):
     clusters = []
@@ -158,8 +132,10 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    #st.set_page_config(layout="wide", page_title="FDI Simulation App")
-    
+    # Initialize session state
+    if 'reset' not in st.session_state:
+        st.session_state.reset = False
+
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
@@ -170,20 +146,30 @@ def main():
         w_structural = st.slider(
             "Weight of Structural Flooding Instances (W_s)",
             0, 100, (50, 100), 
-            help="Slide to set the range for the weight of structural flooding instances."
+            help="Slide to set the range for the weight of structural flooding instances.",
+            key="w_structural"
         )
         st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
         
         threshold = st.number_input(
             'FDI Threshold:', 
             value=4.8, 
-            help="Set the threshold for FDI calculations."
+            help="Set the threshold for FDI calculations.",
+            key="threshold"
         )
         
         if st.button("Reset Parameters"):
+            st.session_state.reset = True
             st.experimental_rerun()
         
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
+
+    # Reset logic
+    if st.session_state.reset:
+        st.session_state.w_structural = (50, 100)
+        st.session_state.threshold = 4.8
+        st.session_state.reset = False
+        st.experimental_rerun()
 
     # Create Tabs
     tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
@@ -237,10 +223,19 @@ def main():
                 lambda x: 1 if any(x in cluster for cluster in clusters) else 0
             )
 
-            df_filtered = df[df['cluster'] > 0]
+            df_filtered = df[df['cluster'] > 0].copy()  # Use .copy() to avoid SettingWithCopyWarning
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
-
-            st.subheader("Clustered Hexagons Over Houston, TX")
+            
+            # Make sure 'FDI_Count' column is included
+            if 'FDI_Count' not in df_filtered.columns:
+                # If 'FDI_Count' is not in df_filtered but is in df, copy it over
+                if 'FDI_Count' in df.columns:
+                    df_filtered['FDI_Count'] = df.loc[df_filtered.index, 'FDI_Count']
+                else:
+                    st.error("FDI_Count column is missing from the data. Please check your data preparation steps.")
+                    st.stop()
+            
+            st.subheader("FDI Count Distribution Over Houston, TX")
             plot_clusters_on_map(df_filtered)
 
     # Tab 2: View Saved Results
