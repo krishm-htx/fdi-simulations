@@ -67,58 +67,47 @@ def hexagons_to_geodataframe(hex_ids):
     return gdf
 
 # Function to plot clustered hexagons on a map
-def plot_clusters_on_map(clustered_hexagons):
-    # Create a map centered on Houston
-    m = folium.Map(location=[29.7604, -95.3698], zoom_start=10)
+def plot_clusters_on_map(df_filtered):
+    center_lat = df_filtered['lat'].mean()
+    center_lon = df_filtered['lon'].mean()
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
 
-    # Create a GeoDataFrame of hexagons
-    gdf = hexagons_to_geodataframe(clustered_hexagons)
-
-    # Add hexagons to the map
-    for _, row in gdf.iterrows():
-        folium.GeoJson(
-            row['geometry'],
-            style_function=lambda x: {
-                'fillColor': 'blue',
-                'color': 'black',
-                'weight': 1,
-                'fillOpacity': 0.5,
-            }            
+    for _, row in df_filtered.iterrows():
+        hexagon = h3.cell_to_boundary(row['GRID_ID'])
+        folium.Polygon(
+            locations=hexagon,
+            popup=f"Cluster: {row['cluster']}",
+            color='blue',
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.4
         ).add_to(m)
 
-    # Display the map
-    m
+    folium_static(m)
 
-def cluster_hexagons(df):
-    clustered_hexagons = []
-    hexagons_checked = set()  # To avoid reprocessing already clustered hexagons
-    
-    # Filter for hexagons with FDI_Count > 1
-    df_filtered = df[df['FDI_Count'] > 1].copy()
-    
-    for index, row in df_filtered.iterrows():
-        hex_id = row['GRID_ID']
-        
-        # Skip already checked hexagons
-        if hex_id in hexagons_checked:
-            continue
-        
-        # Find neighbors for the current hexagon
-        neighbors = []
-        nearby_hexagons = h3.grid_disk(hex_id, 1)  # Get neighboring hexagons
+def find_clusters(hex_list, min_cluster_size=3):
+    clusters = []
+    visited = set()
 
-        for other_index, other_row in df_filtered.iterrows():
-            other_hex_id = other_row['GRID_ID']
-            
-            # Check if the other hexagon is a neighbor (distance 1)
-            if other_index != index and other_hex_id in nearby_hexagons:
-                neighbors.append(other_hex_id)
-        
-        # If it has 2 or more neighbors, it's a cluster
-        if len(neighbors) >= 2:
-            clustered_hexagons.append(hex_id)
-            hexagons_checked.update(neighbors)  # Mark neighbors as checked
-    return clustered_hexagons
+    for hex_id in hex_list:
+        if hex_id not in visited:
+            cluster = set([hex_id])
+            to_explore = [hex_id]
+
+            while to_explore:
+                current_hex = to_explore.pop()
+                neighbors = h3.grid_disk(current_hex, 1)
+
+                for neighbor in neighbors:
+                    if neighbor in hex_list and neighbor not in visited:
+                        visited.add(neighbor)
+                        cluster.add(neighbor)
+                        to_explore.append(neighbor)
+
+            if len(cluster) >= min_cluster_size:
+                clusters.append(cluster)
+
+    return clusters
 
 # Load the instances data and master data
 @st.cache_data
@@ -182,13 +171,24 @@ def main():
             output.seek(0)
             st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
 
-            # Optionally, plot clusters and allow download
-            clustered_hexagons = cluster_hexagons(df)
-            if clustered_hexagons:
-                st.subheader("Clustered Hexagons Over Houston, TX")
-                plot_clusters_on_map(clustered_hexagons)
-            else:
-                st.write("No clusters found based on current criteria.")
+            # Find clusters
+            hexes = df[df['FDI_Count'] > 1]['GRID_ID'].tolist()
+            clusters = find_clusters(hexes)
+
+            # Add cluster information to the DataFrame
+            df['cluster'] = df['GRID_ID'].apply(
+                lambda x: 1 if any(x in cluster for cluster in clusters) else 0
+            )
+
+            # Filter for clusters > 0
+            df_filtered = df[df['cluster'] > 0]
+
+            # Convert H3 indices to lat, lon
+            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x )))
+
+            # Plot clusters on a map
+            st.subheader("Clustered Hexagons Over Houston, TX")
+            plot_clusters_on_map(df_filtered)
     
     # Tab 2: View Saved Results
     with tab2:
