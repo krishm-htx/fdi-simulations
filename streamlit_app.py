@@ -14,6 +14,8 @@ from io import BytesIO
 import time
 import json
 import os
+import streamlit_authenticator as stauth
+
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
 
@@ -184,215 +186,226 @@ def load_data():
 #tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
 
 # Load data
-df, master_df = load_data()
+#df, master_df = load_data()
 
 def main():
     st.title('FDI Simulation App')
 
-    # Sidebar for inputs
-    with st.sidebar:
-        st.header("Simulation Parameters")
-        
-        st.subheader("Weights")
-        w_structural = st.slider(
-            "Weight of Structural Flooding Instances (W_s)",
-            0, 100, (50, 100), 
-            help="Slide to set the range for the weight of structural flooding instances."
-        )
-        st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
-        
-        threshold = st.number_input(
-            'FDI Threshold:', 
-            value=4.8, 
-            help="Set the threshold for FDI calculations."
-        )
-        
-        st.info("Adjust these parameters and click 'Run Simulation' to start.")
-
-    # Create Tabs
-    tab1, tab2 = st.tabs(["Run Simulation", "Docs"])
-
-    # Load data
-    df, master_df = load_data()
-    if df is None or master_df is None:
-        st.stop()
-
-    # Tab 1: Run Simulation
-    with tab1:
-        st.header("Run FDI Simulation")
-        st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
-        st.info("If you need help understanding what this app does or how to open these results in ArcPro, please refer to the 'Documentation' tab.")
-        
-        if st.button("Run Simulation", key="run_sim"):
-            with st.spinner("Running simulation..."):
-                W_s_range = np.arange(w_structural[0], w_structural[1] + 1)
-                df, histogram_data = run_simulation(df, W_s_range, threshold)
+    # Login form
+    with st.form("login_form"):
+        username = st.text_input("Name")
+        password = st.text_input("Password", type="password")
+        submit = st.form_submit_button("Login")
+    if submit:
+        if password == "fdi_simulation":
+            # Load data
+            df, master_df = load_data()
+            if df is None or master_df is None:
+                st.stop()
+            # Sidebar for inputs
+            with st.sidebar:
+                st.header("Simulation Parameters")
                 
-                # Simulate a delay to show the spinner
-                time.sleep(2)
-            
-            st.success("Simulation completed successfully!")
-            
-            # Display results in an expander
-            with st.expander("View Detailed Results", expanded=False):
-                st.dataframe(df)
-
-            # Plot histogram
-            st.subheader("FDI Frequency Distribution")
-            # Download simulation results
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False)
-            output.seek(0)
-            st.download_button(
-                'Download Simulation Results', 
-                data=output, 
-                file_name='fdi_simulation_results.xlsx',
-                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            with st.spinner("Generating histogram..."):
-                plot_histogram(histogram_data, threshold)
-                time.sleep(1) 
-
-            # Find and display clusters
-            hexes = df[df['FDI_Count'] > 1]['GRID_ID'].tolist()
-            clusters = find_clusters(hexes)
-
-            df['cluster'] = df['GRID_ID'].apply(
-                lambda x: 1 if any(x in cluster for cluster in clusters) else 0
-            )
-
-            df_filtered = df[df['cluster'] > 0].copy()
-            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
-
-            # Plot clusters on map
-            st.subheader("Clustered Hexagons Over Houston, TX")
-            # Download clusters
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_filtered.to_excel(writer, index=False)
-            output.seek(0)
-            st.download_button(
-                'Download Clusters', 
-                data=output, 
-                file_name='fdi_clusters.xlsx',
-                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            
-            with st.spinner("Generating map..."):
-                plot_clusters_on_map(df_filtered)
-                time.sleep(1)
-            
-            # Keep the results displayed after saving until parameters are changed
-            #st.subheader("Save Simulation")
-            
-            # Text input for the simulation name
-  #          sim_name = st.text_input("Enter a name for this simulation:", key="sim_name")
-            
-            # Button to save the simulation
-   #         if st.button("Save Simulation"):
-    #            if sim_name:
-                    # Prepare the data to save
-     #               output = io.BytesIO()
-      #              with pd.ExcelWriter(output, engine='openpyxl') as writer:
-       #                 df_filtered.to_excel(writer, index=False)
-        #            output.seek(0)
-                    
-                    # Save the file to a predefined path (adjust to your environment)
-         #           save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Change this path if necessary
-          #          with open(save_path, 'wb') as f:
-           #             f.write(output.read())
-            
-                    # Save the simulation metadata (name, threshold, weight range) to a JSON file
-            #        metadata = {
-             #           "name": sim_name,
-              #          "threshold": threshold,
-               #         "weight_range": w_structural,
-                #        "file_path": save_path
-                 #   }
-                  #  save_metadata(metadata)  # Call the save_metadata function to store this simulation's metadata
-                    
-                   # st.success(f"Simulation '{sim_name}' saved successfully!")
-            
-                    # Ensure results remain visible after saving
-                    #st.write(f"**Results for simulation '{sim_name}':**")
-                    #st.write(f"Weight Range: {w_structural}")
-                    #st.write(f"Threshold: {threshold}")
-                    #st.dataframe(df_filtered)
-                    #st.subheader("FDI Frequency Distribution")
-                    #plot_histogram(histogram_data, threshold)
-            
-#                else:
- #                   st.error("Please enter a valid name for the simulation.")
-
-    # Tab 2: View Saved Results
-  #  with tab2:
-   #     st.header("View Saved Results")
-    
-        # Load metadata of saved simulations
-    #    saved_simulations = load_saved_simulations()
-     #   if saved_simulations:
-      #      print("Saved simulations found:", saved_simulations)  # Debug statement
-       # else:
-        #    print("No saved simulations found.")  # Debug statement
-    
-        #if saved_simulations:
-         #   sim_names = [sim["name"] for sim in saved_simulations]
-          #  selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
-    
-           # if selected_sim:
-                # Find the selected simulation's metadata
-            #    sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
-             #   threshold = sim_data["threshold"]
-              #  weight_range = sim_data["weight_range"]
-               # file_path = sim_data["file_path"]
-    
-                # Display the saved threshold and weight range
-                #st.write(f"**Weight Range:** {weight_range}")
-                #st.write(f"**Threshold:** {threshold}")
-    
-                # Load the saved Excel file
-                #df_saved = pd.read_excel(file_path)
-                #st.dataframe(df_saved)
-    
-                # Plot histogram from saved results
-                #st.subheader("Histogram of Saved Results")
-                #with st.spinner("Generating histogram..."):
-                 #   plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
-                  #  time.sleep(1)
-    
-                # Display the saved map
-                #st.subheader("Clustered Hexagons Map")
-                #with st.spinner("Generating map..."):
-                 #   plot_clusters_on_map(df_saved)
-                  #  time.sleep(1)
-        #else:
-         #   st.info("No saved simulations found.")
-    # Tab 3: Documentation
-    with tab2:
-        st.header("Documentation")
+                st.subheader("Weights")
+                w_structural = st.slider(
+                    "Weight of Structural Flooding Instances (W_s)",
+                    0, 100, (50, 100), 
+                    help="Slide to set the range for the weight of structural flooding instances."
+                )
+                st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
+                
+                threshold = st.number_input(
+                    'FDI Threshold:', 
+                    value=4.8, 
+                    help="Set the threshold for FDI calculations."
+                )
+                
+                st.info("Adjust these parameters and click 'Run Simulation' to start.")
         
-        # Methodology PDF
-        st.subheader("Methodology Documentation")
-        with st.expander("View Methodology Description", expanded=False):
-            st.write("Extract Flooding Data:\n\nObtain total structural and population flooding data for each hexagonal area. This data should be exported into an Excel file with relevant fields such as Hex ID, structural instances, and population instances.\n\nAssign Instance Factors:\n\nDistribute the data into equal ranges and assign instance factors for both structural flooding (Is) and population flooding (Ip).\n\nUpload Data:\n\nThe Excel file with structural instances, population instances, and Hex IDs is uploaded to the tool or software (possibly GIS or similar processing tool).\n\nFDI Calculation:\n\nThe Flood Damage Index (FDI) is calculated using the formula:\n\n𝐹𝐷𝐼 = 𝑊𝑠 × 𝐼𝑠 + 𝑊𝑝 × 𝐼𝑝\n\nWhere:\n\n𝑊𝑠 = Weight for structural instances (percentage, ranging from 0% to 100%)\n\n𝐼𝑠 = Structural flooding instance factor\n\n𝑊𝑝 = Weight for population instances (percentage, equal to 100% minus 𝑊𝑠)\n\n𝐼𝑝 = Population flooding instance factor\n\nSet Weights and Threshold:\n\nChoose a specific 𝑊𝑠 value (weight for structural flooding) and calculate the corresponding FDI for each hexagon. You can iterate through different 𝑊𝑠 values to determine the appropriate threshold for FDI that you want to focus on.\n\nCluster Identification:\n\nAfter calculating the FDI, group neighboring hexagons with high FDI values (greater than the threshold, e.g., FDI > 4.8) into clusters. This clustering step can help identify significant areas of flooding impact.\n\nSave and Run Scenarios:\n\nThe scenario is saved, and additional scenarios can be run with adjusted weights or different parameters.\n\nExample:\n\nIf you set 𝑊𝑠 = 50% and 𝑊𝑝 = 50%, and you have structural and population instance factors: 𝐼𝑠 = 5 and 𝐼𝑝 = 3, you would calculate the FDI for various weight configurations. For instance, with 𝑊𝑠 = 99% and 𝑊𝑝 = 1%, if FDI > 4.8, it passes the threshold.")
-            st.download_button(
-                'Download Methodology Documentation', 
-                data=BytesIO(requests.get(PDF_METHOD_PATH).content), 
-                file_name='FDI-Sims-method.pdf', 
-                mime='application/pdf'
-            )
+            # Create Tabs
+            tab1, tab2 = st.tabs(["Run Simulation", "Docs"])
         
-        # Help PDF
-        st.subheader("Import to ArcPro")
-        with st.expander("View Import Instructions", expanded=False):
-            st.write("Step 1: Copy the Layer H3_R9\nAction: In the Drawing Order panel, right-click the layer H3_R9.\nSelect: From the context menu, choose Copy.\nPaste: Right-click in an empty area and select Paste to create a duplicate of the H3_R9 layer.\n\nStep 2: Add New Data\nNavigate: In the ribbon at the top, under the Map tab, select Add Data.\nFile Path: Go to your download folder and select the file updated_FDI_results_with_master.\nSheet Selection: Choose Sheet 1$ from the file to import the data.\n\nStep 3: Join Data to H3_R9_copy\nLocate: Find the newly created copy H3_R9_copy in the Drawing Order.\nRight-click: On the H3_R9_copy layer, select Joins and Relates and click Add Join.\n\nStep 4: Set Join Fields\nInput Field: Set the Input Table as H3_R9_copy and the Input Field as OBJECT ID.\nJoin Table: Select Sheet1 (imported in Step 2) as the Join Table.\nJoin Field: Ensure the Join Field is OBJECTID in both tables.\n\nStep 5: Symbology\nOpen Symbology: Go to the H3_R9_copy layer, right-click, and choose Symbology.\nChoose Symbology Type: Set the type to Graduated Colors.\nSet Field: In the field options, select Cluster_Assigned to apply color gradation based on clusters.\n\nStep 6: View Results\nAfter applying the symbology, the map will display hexagons color-coded based on the cluster assignments, showing the distribution of the data visually across the region.")
-            st.download_button(
-                'Download Import Instructions', 
-                data=BytesIO(requests.get(PDF_HELP_PATH).content), 
-                file_name='Excel_Import_to_ArcPro.pdf', 
-                mime='application/pdf'
-            )
+            # Load data
+            df, master_df = load_data()
+            if df is None or master_df is None:
+                st.stop()
+        
+            # Tab 1: Run Simulation
+            with tab1:
+                st.header("Run FDI Simulation")
+                st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
+                st.info("If you need help understanding what this app does or how to open these results in ArcPro, please refer to the 'Documentation' tab.")
+                
+                if st.button("Run Simulation", key="run_sim"):
+                    with st.spinner("Running simulation..."):
+                        W_s_range = np.arange(w_structural[0], w_structural[1] + 1)
+                        df, histogram_data = run_simulation(df, W_s_range, threshold)
+                        
+                        # Simulate a delay to show the spinner
+                        time.sleep(2)
+                    
+                    st.success("Simulation completed successfully!")
+                    
+                    # Display results in an expander
+                    with st.expander("View Detailed Results", expanded=False):
+                        st.dataframe(df)
+        
+                    # Plot histogram
+                    st.subheader("FDI Frequency Distribution")
+                    # Download simulation results
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False)
+                    output.seek(0)
+                    st.download_button(
+                        'Download Simulation Results', 
+                        data=output, 
+                        file_name='fdi_simulation_results.xlsx',
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    with st.spinner("Generating histogram..."):
+                        plot_histogram(histogram_data, threshold)
+                        time.sleep(1) 
+        
+                    # Find and display clusters
+                    hexes = df[df['FDI_Count'] > 1]['GRID_ID'].tolist()
+                    clusters = find_clusters(hexes)
+        
+                    df['cluster'] = df['GRID_ID'].apply(
+                        lambda x: 1 if any(x in cluster for cluster in clusters) else 0
+                    )
+        
+                    df_filtered = df[df['cluster'] > 0].copy()
+                    df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
+        
+                    # Plot clusters on map
+                    st.subheader("Clustered Hexagons Over Houston, TX")
+                    # Download clusters
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_filtered.to_excel(writer, index=False)
+                    output.seek(0)
+                    st.download_button(
+                        'Download Clusters', 
+                        data=output, 
+                        file_name='fdi_clusters.xlsx',
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    
+                    with st.spinner("Generating map..."):
+                        plot_clusters_on_map(df_filtered)
+                        time.sleep(1)
+                    
+                    # Keep the results displayed after saving until parameters are changed
+                    #st.subheader("Save Simulation")
+                    
+                    # Text input for the simulation name
+          #          sim_name = st.text_input("Enter a name for this simulation:", key="sim_name")
+                    
+                    # Button to save the simulation
+           #         if st.button("Save Simulation"):
+            #            if sim_name:
+                            # Prepare the data to save
+             #               output = io.BytesIO()
+              #              with pd.ExcelWriter(output, engine='openpyxl') as writer:
+               #                 df_filtered.to_excel(writer, index=False)
+                #            output.seek(0)
+                            
+                            # Save the file to a predefined path (adjust to your environment)
+                 #           save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Change this path if necessary
+                  #          with open(save_path, 'wb') as f:
+                   #             f.write(output.read())
+                    
+                            # Save the simulation metadata (name, threshold, weight range) to a JSON file
+                    #        metadata = {
+                     #           "name": sim_name,
+                      #          "threshold": threshold,
+                       #         "weight_range": w_structural,
+                        #        "file_path": save_path
+                         #   }
+                          #  save_metadata(metadata)  # Call the save_metadata function to store this simulation's metadata
+                            
+                           # st.success(f"Simulation '{sim_name}' saved successfully!")
+                    
+                            # Ensure results remain visible after saving
+                            #st.write(f"**Results for simulation '{sim_name}':**")
+                            #st.write(f"Weight Range: {w_structural}")
+                            #st.write(f"Threshold: {threshold}")
+                            #st.dataframe(df_filtered)
+                            #st.subheader("FDI Frequency Distribution")
+                            #plot_histogram(histogram_data, threshold)
+                    
+        #                else:
+         #                   st.error("Please enter a valid name for the simulation.")
+        
+            # Tab 2: View Saved Results
+          #  with tab2:
+           #     st.header("View Saved Results")
+            
+                # Load metadata of saved simulations
+            #    saved_simulations = load_saved_simulations()
+             #   if saved_simulations:
+              #      print("Saved simulations found:", saved_simulations)  # Debug statement
+               # else:
+                #    print("No saved simulations found.")  # Debug statement
+            
+                #if saved_simulations:
+                 #   sim_names = [sim["name"] for sim in saved_simulations]
+                  #  selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
+            
+                   # if selected_sim:
+                        # Find the selected simulation's metadata
+                    #    sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
+                     #   threshold = sim_data["threshold"]
+                      #  weight_range = sim_data["weight_range"]
+                       # file_path = sim_data["file_path"]
+            
+                        # Display the saved threshold and weight range
+                        #st.write(f"**Weight Range:** {weight_range}")
+                        #st.write(f"**Threshold:** {threshold}")
+            
+                        # Load the saved Excel file
+                        #df_saved = pd.read_excel(file_path)
+                        #st.dataframe(df_saved)
+            
+                        # Plot histogram from saved results
+                        #st.subheader("Histogram of Saved Results")
+                        #with st.spinner("Generating histogram..."):
+                         #   plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
+                          #  time.sleep(1)
+            
+                        # Display the saved map
+                        #st.subheader("Clustered Hexagons Map")
+                        #with st.spinner("Generating map..."):
+                         #   plot_clusters_on_map(df_saved)
+                          #  time.sleep(1)
+                #else:
+                 #   st.info("No saved simulations found.")
+            # Tab 3: Documentation
+            with tab2:
+                st.header("Documentation")
+                
+                # Methodology PDF
+                st.subheader("Methodology Documentation")
+                with st.expander("View Methodology Description", expanded=False):
+                    st.write("Extract Flooding Data:\n\nObtain total structural and population flooding data for each hexagonal area. This data should be exported into an Excel file with relevant fields such as Hex ID, structural instances, and population instances.\n\nAssign Instance Factors:\n\nDistribute the data into equal ranges and assign instance factors for both structural flooding (Is) and population flooding (Ip).\n\nUpload Data:\n\nThe Excel file with structural instances, population instances, and Hex IDs is uploaded to the tool or software (possibly GIS or similar processing tool).\n\nFDI Calculation:\n\nThe Flood Damage Index (FDI) is calculated using the formula:\n\n𝐹𝐷𝐼 = 𝑊𝑠 × 𝐼𝑠 + 𝑊𝑝 × 𝐼𝑝\n\nWhere:\n\n𝑊𝑠 = Weight for structural instances (percentage, ranging from 0% to 100%)\n\n𝐼𝑠 = Structural flooding instance factor\n\n𝑊𝑝 = Weight for population instances (percentage, equal to 100% minus 𝑊𝑠)\n\n𝐼𝑝 = Population flooding instance factor\n\nSet Weights and Threshold:\n\nChoose a specific 𝑊𝑠 value (weight for structural flooding) and calculate the corresponding FDI for each hexagon. You can iterate through different 𝑊𝑠 values to determine the appropriate threshold for FDI that you want to focus on.\n\nCluster Identification:\n\nAfter calculating the FDI, group neighboring hexagons with high FDI values (greater than the threshold, e.g., FDI > 4.8) into clusters. This clustering step can help identify significant areas of flooding impact.\n\nSave and Run Scenarios:\n\nThe scenario is saved, and additional scenarios can be run with adjusted weights or different parameters.\n\nExample:\n\nIf you set 𝑊𝑠 = 50% and 𝑊𝑝 = 50%, and you have structural and population instance factors: 𝐼𝑠 = 5 and 𝐼𝑝 = 3, you would calculate the FDI for various weight configurations. For instance, with 𝑊𝑠 = 99% and 𝑊𝑝 = 1%, if FDI > 4.8, it passes the threshold.")
+                    st.download_button(
+                        'Download Methodology Documentation', 
+                        data=BytesIO(requests.get(PDF_METHOD_PATH).content), 
+                        file_name='FDI-Sims-method.pdf', 
+                        mime='application/pdf'
+                    )
+                
+                # Help PDF
+                st.subheader("Import to ArcPro")
+                with st.expander("View Import Instructions", expanded=False):
+                    st.write("Step 1: Copy the Layer H3_R9\nAction: In the Drawing Order panel, right-click the layer H3_R9.\nSelect: From the context menu, choose Copy.\nPaste: Right-click in an empty area and select Paste to create a duplicate of the H3_R9 layer.\n\nStep 2: Add New Data\nNavigate: In the ribbon at the top, under the Map tab, select Add Data.\nFile Path: Go to your download folder and select the file updated_FDI_results_with_master.\nSheet Selection: Choose Sheet 1$ from the file to import the data.\n\nStep 3: Join Data to H3_R9_copy\nLocate: Find the newly created copy H3_R9_copy in the Drawing Order.\nRight-click: On the H3_R9_copy layer, select Joins and Relates and click Add Join.\n\nStep 4: Set Join Fields\nInput Field: Set the Input Table as H3_R9_copy and the Input Field as OBJECT ID.\nJoin Table: Select Sheet1 (imported in Step 2) as the Join Table.\nJoin Field: Ensure the Join Field is OBJECTID in both tables.\n\nStep 5: Symbology\nOpen Symbology: Go to the H3_R9_copy layer, right-click, and choose Symbology.\nChoose Symbology Type: Set the type to Graduated Colors.\nSet Field: In the field options, select Cluster_Assigned to apply color gradation based on clusters.\n\nStep 6: View Results\nAfter applying the symbology, the map will display hexagons color-coded based on the cluster assignments, showing the distribution of the data visually across the region.")
+                    st.download_button(
+                        'Download Import Instructions', 
+                        data=BytesIO(requests.get(PDF_HELP_PATH).content), 
+                        file_name='Excel_Import_to_ArcPro.pdf', 
+                        mime='application/pdf'
+                    )
 
 if __name__ == "__main__":
     main()
