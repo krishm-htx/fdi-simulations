@@ -272,36 +272,36 @@ def main():
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             
-           with st.spinner("Generating map..."):
-               plot_clusters_on_map(df_filtered)
-               time.sleep(1)
-            
-            # Directly show the input for the simulation name and save button
-            sim_name = st.text_input("Enter a name for this simulation:")
-            
-            if sim_name:
-                if st.button("Save Simulation"):
-                    # Prepare the data to save
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_filtered.to_excel(writer, index=False)
-                    output.seek(0)
-                    
-                    # Save the file to a predefined path (adjust this based on your file system)
-                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your storage path
-                    with open(save_path, 'wb') as f:
-                        f.write(output.read())
-            
-                    # Save the simulation metadata (threshold and weight range) to a JSON or another file
-                    metadata = {
-                        "name": sim_name,
-                        "threshold": threshold,
-                        "weight_range": w_structural,
-                        "file_path": save_path
-                    }
-                    save_metadata(metadata)  # Call the save_metadata function to record this simulation
-                    
-                    st.success(f"Simulation '{sim_name}' saved successfully!")
+               with st.spinner("Generating map..."):
+                   plot_clusters_on_map(df_filtered)
+                   time.sleep(1)
+                
+                # Directly show the input for the simulation name and save button
+                sim_name = st.text_input("Enter a name for this simulation:")
+                
+                if sim_name:
+                    if st.button("Save Simulation"):
+                        # Prepare the data to save
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df_filtered.to_excel(writer, index=False)
+                        output.seek(0)
+                        
+                        # Save the file to a predefined path (adjust this based on your file system)
+                        save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your storage path
+                        with open(save_path, 'wb') as f:
+                            f.write(output.read())
+                
+                        # Save the simulation metadata (threshold and weight range) to a JSON or another file
+                        metadata = {
+                            "name": sim_name,
+                            "threshold": threshold,
+                            "weight_range": w_structural,
+                            "file_path": save_path
+                        }
+                        save_metadata(metadata)  # Call the save_metadata function to record this simulation
+                        
+                        st.success(f"Simulation '{sim_name}' saved successfully!")
 
 
 
