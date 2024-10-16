@@ -43,7 +43,7 @@ def login():
             if username in ["Krish", "Paresh", "Mayuri", "Jesse", "Jordan"] and check_hashes(password, hashed_pswd):
                 st.session_state.logged_in = True
                 st.success("Logged In as {}".format(username))
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.warning("Incorrect Username/Password")
     return st.session_state.logged_in
