@@ -134,38 +134,38 @@ def find_clusters(hex_list, min_cluster_size=3):
 
     return clusters
 
-def save_metadata(metadata):
-    metadata_file = "/mnt/data/simulations_metadata.json"
+#def save_metadata(metadata):
+   # metadata_file = "/mnt/data/simulations_metadata.json"
 
     # Check if metadata file exists, create if not
-    if not os.path.exists(metadata_file):
-        with open(metadata_file, 'w') as f:
-            json.dump([], f)
+   # if not os.path.exists(metadata_file):
+    #    with open(metadata_file, 'w') as f:
+     #       json.dump([], f)
 
     # Load existing metadata
-    with open(metadata_file, 'r') as f:
-        data = json.load(f)
+    #with open(metadata_file, 'r') as f:
+     #   data = json.load(f)
 
     # Append new simulation metadata
-    data.append(metadata)
+    #data.append(metadata)
 
     # Save updated metadata back to file
-    with open(metadata_file, 'w') as f:
-        json.dump(data, f, indent=4)
+    #with open(metadata_file, 'w') as f:
+     #   json.dump(data, f, indent=4)
 
-def load_saved_simulations():
-    metadata_file = "/mnt/data/simulations_metadata.json"
-    if os.path.exists(metadata_file):
-        with open(metadata_file, 'r') as f:
-            try:
-                loaded_data = json.load(f)
-                print("Loaded simulations metadata:", loaded_data)  # Debug statement
-                return loaded_data
-            except json.JSONDecodeError as e:
-                print("Error decoding JSON:", e)  # Error handling
-    else:
-        print("Metadata file does not exist.")  # Debug statement
-    return []
+#def load_saved_simulations():
+ #   metadata_file = "/mnt/data/simulations_metadata.json"
+  #  if os.path.exists(metadata_file):
+   #     with open(metadata_file, 'r') as f:
+    #        try:
+     #           loaded_data = json.load(f)
+      #          print("Loaded simulations metadata:", loaded_data)  # Debug statement
+       #         return loaded_data
+        #    except json.JSONDecodeError as e:
+         #       print("Error decoding JSON:", e)  # Error handling
+    #else:
+     #   print("Metadata file does not exist.")  # Debug statement
+    #return []
 
 # Load the instances data and master data
 @st.cache_data
@@ -210,7 +210,7 @@ def main():
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
 
     # Create Tabs
-    tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
+    tab1, tab2 = st.tabs(["Run Simulation", "Docs"])
 
     # Load data
     df, master_df = load_data()
@@ -284,92 +284,92 @@ def main():
                 time.sleep(1)
             
             # Keep the results displayed after saving until parameters are changed
-            st.subheader("Save Simulation")
+            #st.subheader("Save Simulation")
             
             # Text input for the simulation name
-            sim_name = st.text_input("Enter a name for this simulation:", key="sim_name")
+  #          sim_name = st.text_input("Enter a name for this simulation:", key="sim_name")
             
             # Button to save the simulation
-            if st.button("Save Simulation"):
-                if sim_name:
+   #         if st.button("Save Simulation"):
+    #            if sim_name:
                     # Prepare the data to save
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_filtered.to_excel(writer, index=False)
-                    output.seek(0)
+     #               output = io.BytesIO()
+      #              with pd.ExcelWriter(output, engine='openpyxl') as writer:
+       #                 df_filtered.to_excel(writer, index=False)
+        #            output.seek(0)
                     
                     # Save the file to a predefined path (adjust to your environment)
-                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Change this path if necessary
-                    with open(save_path, 'wb') as f:
-                        f.write(output.read())
+         #           save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Change this path if necessary
+          #          with open(save_path, 'wb') as f:
+           #             f.write(output.read())
             
                     # Save the simulation metadata (name, threshold, weight range) to a JSON file
-                    metadata = {
-                        "name": sim_name,
-                        "threshold": threshold,
-                        "weight_range": w_structural,
-                        "file_path": save_path
-                    }
-                    save_metadata(metadata)  # Call the save_metadata function to store this simulation's metadata
+            #        metadata = {
+             #           "name": sim_name,
+              #          "threshold": threshold,
+               #         "weight_range": w_structural,
+                #        "file_path": save_path
+                 #   }
+                  #  save_metadata(metadata)  # Call the save_metadata function to store this simulation's metadata
                     
-                    st.success(f"Simulation '{sim_name}' saved successfully!")
+                   # st.success(f"Simulation '{sim_name}' saved successfully!")
             
                     # Ensure results remain visible after saving
-                    st.write(f"**Results for simulation '{sim_name}':**")
-                    st.write(f"Weight Range: {w_structural}")
-                    st.write(f"Threshold: {threshold}")
-                    st.dataframe(df_filtered)
-                    st.subheader("FDI Frequency Distribution")
-                    plot_histogram(histogram_data, threshold)
+                    #st.write(f"**Results for simulation '{sim_name}':**")
+                    #st.write(f"Weight Range: {w_structural}")
+                    #st.write(f"Threshold: {threshold}")
+                    #st.dataframe(df_filtered)
+                    #st.subheader("FDI Frequency Distribution")
+                    #plot_histogram(histogram_data, threshold)
             
-                else:
-                    st.error("Please enter a valid name for the simulation.")
+#                else:
+ #                   st.error("Please enter a valid name for the simulation.")
 
     # Tab 2: View Saved Results
-    with tab2:
-        st.header("View Saved Results")
+  #  with tab2:
+   #     st.header("View Saved Results")
     
         # Load metadata of saved simulations
-        saved_simulations = load_saved_simulations()
-        if saved_simulations:
-            print("Saved simulations found:", saved_simulations)  # Debug statement
-        else:
-            print("No saved simulations found.")  # Debug statement
+    #    saved_simulations = load_saved_simulations()
+     #   if saved_simulations:
+      #      print("Saved simulations found:", saved_simulations)  # Debug statement
+       # else:
+        #    print("No saved simulations found.")  # Debug statement
     
-        if saved_simulations:
-            sim_names = [sim["name"] for sim in saved_simulations]
-            selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
+        #if saved_simulations:
+         #   sim_names = [sim["name"] for sim in saved_simulations]
+          #  selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
     
-            if selected_sim:
+           # if selected_sim:
                 # Find the selected simulation's metadata
-                sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
-                threshold = sim_data["threshold"]
-                weight_range = sim_data["weight_range"]
-                file_path = sim_data["file_path"]
+            #    sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
+             #   threshold = sim_data["threshold"]
+              #  weight_range = sim_data["weight_range"]
+               # file_path = sim_data["file_path"]
     
                 # Display the saved threshold and weight range
-                st.write(f"**Weight Range:** {weight_range}")
-                st.write(f"**Threshold:** {threshold}")
+                #st.write(f"**Weight Range:** {weight_range}")
+                #st.write(f"**Threshold:** {threshold}")
     
                 # Load the saved Excel file
-                df_saved = pd.read_excel(file_path)
-                st.dataframe(df_saved)
+                #df_saved = pd.read_excel(file_path)
+                #st.dataframe(df_saved)
     
                 # Plot histogram from saved results
-                st.subheader("Histogram of Saved Results")
-                with st.spinner("Generating histogram..."):
-                    plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
-                    time.sleep(1)
+                #st.subheader("Histogram of Saved Results")
+                #with st.spinner("Generating histogram..."):
+                 #   plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
+                  #  time.sleep(1)
     
                 # Display the saved map
-                st.subheader("Clustered Hexagons Map")
-                with st.spinner("Generating map..."):
-                    plot_clusters_on_map(df_saved)
-                    time.sleep(1)
-        else:
-            st.info("No saved simulations found.")
+                #st.subheader("Clustered Hexagons Map")
+                #with st.spinner("Generating map..."):
+                 #   plot_clusters_on_map(df_saved)
+                  #  time.sleep(1)
+        #else:
+         #   st.info("No saved simulations found.")
     # Tab 3: Documentation
-    with tab3:
+    with tab2:
         st.header("Documentation")
         
         # Methodology PDF
