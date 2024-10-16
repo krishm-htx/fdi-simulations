@@ -242,7 +242,7 @@ def main():
                 lambda x: 1 if any(x in cluster for cluster in clusters) else 0
             )
 
-            df_filtered = df[df['cluster'] > 0]
+            df_filtered = df[df['cluster'] > 0].copy()
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
 
             st.subheader("Clustered Hexagons Over Houston, TX")
