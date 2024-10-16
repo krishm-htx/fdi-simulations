@@ -72,16 +72,39 @@ def plot_clusters_on_map(df_filtered):
     center_lon = df_filtered['lon'].mean()
     m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
 
+    # Color scale for FDI count
+    def get_color(fdi_count):
+        if fdi_count <= 25:
+            return 'green'
+        elif fdi_count <= 50:
+            return 'yellow'
+        else:
+            return 'red'
+
     for _, row in df_filtered.iterrows():
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
         folium.Polygon(
             locations=hexagon,
-            popup=f"Cluster: {row['cluster']}",
-            color='blue',
+            popup=f"Cluster: {row['cluster']}<br>FDI Count: {row['FDI_Count']}",
+            color='black',
+            weight=1,
             fill=True,
-            fill_color='blue',
-            fill_opacity=0.4
+            fill_color=get_color(row['FDI_Count']),
+            fill_opacity=0.7
         ).add_to(m)
+
+    # Add a legend
+    legend_html = '''
+         <div style="position: fixed; 
+                     bottom: 50px; left: 50px; width: 120px; height: 90px; 
+                     border:2px solid grey; z-index:9999; font-size:14px;
+                     ">&nbsp; FDI Count <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:green"></i>&nbsp; 0-25 <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:yellow"></i>&nbsp; 26-50 <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:red"></i>&nbsp; 51+ 
+         </div>
+         '''
+    m.get_root().html.add_child(folium.Element(legend_html))
 
     folium_static(m)
 
@@ -123,13 +146,25 @@ def load_data():
 # Main Streamlit App st.title('FDI Simulation App')
 
 # Create Tabs
-tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
+#tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
 
 # Load data
 df, master_df = load_data()
 
 def main():
+    st.set_page_config(layout="wide")
     st.title('FDI Simulation App')
+
+    # Sidebar for inputs
+    with st.sidebar:
+        st.header("Simulation Parameters")
+        ws_start = st.slider('W_s Start Point:', 0, 100, 50)
+        ws_end = st.slider('W_s End Point:', ws_start, 100, 100)
+        wp_start = 100 - ws_start
+        wp_end = 100 - ws_end
+        st.write(f"W_p range: {wp_start} to {wp_end}")
+        threshold = st.number_input('FDI Threshold:', value=4.8)
+        st.info("Adjust these parameters and click 'Run Simulation' to start.")
 
     # Create Tabs
     tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
@@ -142,23 +177,13 @@ def main():
     # Tab 1: Run Simulation
     with tab1:
         st.header("Run FDI Simulation")
-    
-        # Sliders for W_s range: start point and end point
-        ws_start = st.slider('Select W_s Start Point:', 0, 100, 50)
-        ws_end = st.slider('Select W_s End Point:', ws_start, 100, 100)
+        st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
         
-        # Automatically calculate and display W_p as 100 - W_s
-        wp_start = 100 - ws_start
-        wp_end = 100 - ws_end
-        st.write(f"W_p range: {wp_start} to {wp_end}")
-        
-        # Input for FDI threshold
-        threshold = st.number_input('Set FDI Threshold:', value=4.8)
-
         # Run simulation when button is clicked
         if st.button("Run Simulation"):
-            W_s_range = np.arange(ws_start, ws_end + 1)
-            df, histogram_data = run_simulation(df, W_s_range, threshold)
+            with st.spinner("Running simulation..."):
+                W_s_range = np.arange(ws_start, ws_end + 1)
+                df, histogram_data = run_simulation(df, W_s_range, threshold)
             
             # Display results
             st.write(df)
@@ -184,11 +209,12 @@ def main():
             df_filtered = df[df['cluster'] > 0]
 
             # Convert H3 indices to lat, lon
-            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x )))
+            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
 
             # Plot clusters on a map
             st.subheader("Clustered Hexagons Over Houston, TX")
             plot_clusters_on_map(df_filtered)
+
     
     # Tab 2: View Saved Results
     with tab2:
