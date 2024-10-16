@@ -152,7 +152,7 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    st.set_page_config(layout="wide")
+    #st.set_page_config(layout="wide")
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
