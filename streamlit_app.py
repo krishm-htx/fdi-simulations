@@ -51,7 +51,7 @@ def run_simulation(df, W_s_range, threshold):
 
 # Function to create the histogram plot
 def plot_histogram(histogram_data, threshold):
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(5, 3))
     plt.bar(histogram_data.keys(), histogram_data.values(), color='skyblue')
     plt.xlabel('Object ID')
     plt.ylabel(f'FDI Frequency (Count of times FDI > {threshold})')
@@ -76,7 +76,7 @@ def hexagons_to_geodataframe(hex_ids):
 def plot_clusters_on_map(df_filtered):
     center_lat = df_filtered['lat'].mean()
     center_lon = df_filtered['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width = "100%", height="600px")
 
     # Color scale for FDI count
     def get_color(fdi_count):
