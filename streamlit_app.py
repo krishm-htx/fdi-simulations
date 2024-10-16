@@ -135,7 +135,7 @@ def find_clusters(hex_list, min_cluster_size=3):
     return clusters
 
 def save_metadata(metadata):
-    metadata_file = "/mnt/data/simulations_metadata.json"
+    metadata_file = "/mnt/data/simulations_metadata.json"  # Path to the metadata file
 
     # Check if metadata file exists, create if not
     if not os.path.exists(metadata_file):
@@ -159,7 +159,6 @@ def load_saved_simulations():
         with open(metadata_file, 'r') as f:
             return json.load(f)
     return []
-
 # Load the instances data and master data
 @st.cache_data
 def load_data():
@@ -275,42 +274,55 @@ def main():
             with st.spinner("Generating map..."):
                 plot_clusters_on_map(df_filtered)
                 time.sleep(1)
-                
-            # Directly show the input for the simulation name and save button
-            sim_name = st.text_input("Enter a name for this simulation:")
-                
-            if sim_name:
-                if st.button("Save Simulation"):
-                        # Prepare the data to save
+            
+            # Keep the results displayed after saving until parameters are changed
+            st.subheader("Save Simulation")
+            
+            # Text input for the simulation name
+            sim_name = st.text_input("Enter a name for this simulation:", key="sim_name")
+            
+            # Button to save the simulation
+            if st.button("Save Simulation"):
+                if sim_name:
+                    # Prepare the data to save
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df_filtered.to_excel(writer, index=False)
                     output.seek(0)
-                        
-                        # Save the file to a predefined path (adjust this based on your file system)
-                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your storage path
+                    
+                    # Save the file to a predefined path (adjust to your environment)
+                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Change this path if necessary
                     with open(save_path, 'wb') as f:
                         f.write(output.read())
-                
-                        # Save the simulation metadata (threshold and weight range) to a JSON or another file
+            
+                    # Save the simulation metadata (name, threshold, weight range) to a JSON file
                     metadata = {
-                         "name": sim_name,
-                          "threshold": threshold,
-                          "weight_range": w_structural,
-                         "file_path": save_path
-                        }
-                    save_metadata(metadata)  # Call the save_metadata function to record this simulation
-                        
+                        "name": sim_name,
+                        "threshold": threshold,
+                        "weight_range": w_structural,
+                        "file_path": save_path
+                    }
+                    save_metadata(metadata)  # Call the save_metadata function to store this simulation's metadata
+                    
                     st.success(f"Simulation '{sim_name}' saved successfully!")
-
-
+            
+                    # Ensure results remain visible after saving
+                    st.write(f"**Results for simulation '{sim_name}':**")
+                    st.write(f"Weight Range: {w_structural}")
+                    st.write(f"Threshold: {threshold}")
+                    st.dataframe(df_filtered)
+                    st.subheader("FDI Frequency Distribution")
+                    plot_histogram(histogram_data, threshold)
+            
+                else:
+                    st.error("Please enter a valid name for the simulation.")
 
     # Tab 2: View Saved Results
     with tab2:
         st.header("View Saved Results")
     
         # Load metadata of saved simulations
-        saved_simulations = load_saved_simulations()  # Implement this function to read from the metadata JSON or database
+        saved_simulations = load_saved_simulations()
     
         if saved_simulations:
             sim_names = [sim["name"] for sim in saved_simulations]
