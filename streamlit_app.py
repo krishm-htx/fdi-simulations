@@ -273,8 +273,8 @@ def main():
             )
             
            with st.spinner("Generating map..."):
-                plot_clusters_on_map(df_filtered)
-                time.sleep(1)
+               plot_clusters_on_map(df_filtered)
+               time.sleep(1)
             
             # Directly show the input for the simulation name and save button
             sim_name = st.text_input("Enter a name for this simulation:")
