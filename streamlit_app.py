@@ -51,7 +51,7 @@ def run_simulation(df, W_s_range, threshold):
 
 # Function to create the histogram plot
 def plot_histogram(histogram_data, threshold):
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(8, 5))
     plt.bar(histogram_data.keys(), histogram_data.values(), color='skyblue')
     plt.xlabel('Object ID')
     plt.ylabel(f'FDI Frequency (Count of times FDI > {threshold})')
@@ -80,7 +80,7 @@ def plot_clusters_on_map(df_filtered):
 
     # Color scale for FDI count
     def get_color(fdi_count):
-        return 'red'
+        return 'purple'
 
     for _, row in df_filtered.iterrows():
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
@@ -91,13 +91,13 @@ def plot_clusters_on_map(df_filtered):
             weight=1,
             fill=True,
             fill_color=get_color(row['FDI_Count']),
-            fill_opacity=0.7
+            fill_opacity=0.65
         ).add_to(m)
 
     # Add a legend
     legend_html = '''
          <div style="position: fixed; 
-                     bottom: 50px; left: 50px; width: 120px; height: 90px; 
+                     bottom: 50px; left: 70px; width: 150px; height: 120px; 
                      border:2px solid grey; z-index:9999; font-size:14px;
                      ">&nbsp; FDI Count <br>
              &nbsp; <i class="fa fa-map-marker fa-2x" style="color:green"></i>&nbsp; 0-25 <br>
@@ -206,10 +206,6 @@ def main():
 
             # Plot histogram
             st.subheader("FDI Frequency Distribution")
-            with st.spinner("Generating histogram..."):
-                plot_histogram(histogram_data, threshold)
-                time.sleep(1)
-
             # Download simulation results
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -221,6 +217,9 @@ def main():
                 file_name='fdi_simulation_results.xlsx',
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
+            with st.spinner("Generating histogram..."):
+                plot_histogram(histogram_data, threshold)
+                time.sleep(1) 
 
             # Find and display clusters
             hexes = df[df['FDI_Count'] > 1]['GRID_ID'].tolist()
@@ -233,6 +232,8 @@ def main():
             df_filtered = df[df['cluster'] > 0].copy()
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
 
+            # Plot clusters on map
+            st.subheader("Clustered Hexagons Over Houston, TX")
             # Download clusters
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -244,9 +245,7 @@ def main():
                 file_name='fdi_clusters.xlsx',
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
-
-            # Plot clusters on map
-            st.subheader("Clustered Hexagons Over Houston, TX")
+            
             with st.spinner("Generating map..."):
                 plot_clusters_on_map(df_filtered)
                 time.sleep(1)
