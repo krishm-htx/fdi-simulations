@@ -242,7 +242,14 @@ def main():
 
     # Tab 2: View Saved Results
     with tab2:
-         # ... (previous code remains the same)
+        st.header("View Saved Results")
+        saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
+        if saved_file is not None:
+            saved_df = pd.read_excel(saved_file)
+            st.dataframe(saved_df)
+    
+            st.subheader("Histogram of Saved Results")
+            plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
 
     # Tab 3: Documentation
     with tab3:
