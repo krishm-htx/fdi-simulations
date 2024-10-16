@@ -111,7 +111,7 @@ def plot_clusters_on_map(df_filtered):
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
         folium.Polygon(
             locations=hexagon,
-            popup=f"Cluster: {row['cluster']}<br>FDI Count: {row['FDI_Count']}",
+            popup=f"FDI Count: {row['FDI_Count']}",
             color='black',
             weight=1,
             fill=True,
@@ -278,6 +278,7 @@ def main():
                 with st.spinner("Generating map..."):
                     plot_clusters_on_map(df_filtered)
                     time.sleep(1)
+                st.info("click on the hexagon to know the number of times the FDI threshold was crossed!")
             
         with tab2:
             st.header("Documentation")
