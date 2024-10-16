@@ -14,7 +14,7 @@ from io import BytesIO
 import time
 import json
 import os
-import streamlit_authenticator as stauth
+#import streamlit_authenticator as stauth
 
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
