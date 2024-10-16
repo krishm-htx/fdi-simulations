@@ -308,43 +308,43 @@ def main():
 
     # Tab 2: View Saved Results
     with tab2:
-    st.header("View Saved Results")
-
-    # Load metadata of saved simulations
-    saved_simulations = load_saved_simulations()  # Implement this function to read from the metadata JSON or database
-
-    if saved_simulations:
-        sim_names = [sim["name"] for sim in saved_simulations]
-        selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
-
-        if selected_sim:
-            # Find the selected simulation's metadata
-            sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
-            threshold = sim_data["threshold"]
-            weight_range = sim_data["weight_range"]
-            file_path = sim_data["file_path"]
-            
-            # Display the saved threshold and weight range
-            st.write(f"**Weight Range:** {weight_range}")
-            st.write(f"**Threshold:** {threshold}")
-
-            # Load the saved Excel file
-            df_saved = pd.read_excel(file_path)
-            st.dataframe(df_saved)
-
-            # Plot histogram from saved results
-            st.subheader("Histogram of Saved Results")
-            with st.spinner("Generating histogram..."):
-                plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
-                time.sleep(1)
-
-            # Display the saved map
-            st.subheader("Clustered Hexagons Map")
-            with st.spinner("Generating map..."):
-                plot_clusters_on_map(df_saved)
-                time.sleep(1)
-    else:
-        st.info("No saved simulations found.")
+        st.header("View Saved Results")
+    
+        # Load metadata of saved simulations
+        saved_simulations = load_saved_simulations()  # Implement this function to read from the metadata JSON or database
+    
+        if saved_simulations:
+            sim_names = [sim["name"] for sim in saved_simulations]
+            selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
+    
+            if selected_sim:
+                # Find the selected simulation's metadata
+                sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
+                threshold = sim_data["threshold"]
+                weight_range = sim_data["weight_range"]
+                file_path = sim_data["file_path"]
+                
+                # Display the saved threshold and weight range
+                st.write(f"**Weight Range:** {weight_range}")
+                st.write(f"**Threshold:** {threshold}")
+    
+                # Load the saved Excel file
+                df_saved = pd.read_excel(file_path)
+                st.dataframe(df_saved)
+    
+                # Plot histogram from saved results
+                st.subheader("Histogram of Saved Results")
+                with st.spinner("Generating histogram..."):
+                    plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
+                    time.sleep(1)
+    
+                # Display the saved map
+                st.subheader("Clustered Hexagons Map")
+                with st.spinner("Generating map..."):
+                    plot_clusters_on_map(df_saved)
+                    time.sleep(1)
+        else:
+            st.info("No saved simulations found.")
 
     # Tab 3: Documentation
     with tab3:
