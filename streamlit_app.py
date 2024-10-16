@@ -157,17 +157,16 @@ def load_saved_simulations():
     metadata_file = "/mnt/data/simulations_metadata.json"
     if os.path.exists(metadata_file):
         with open(metadata_file, 'r') as f:
-            loaded_data = json.load(f)
-            print("Loaded simulations metadata:", loaded_data)  # Debug statement
-            return loaded_data
+            try:
+                loaded_data = json.load(f)
+                print("Loaded simulations metadata:", loaded_data)  # Debug statement
+                return loaded_data
+            except json.JSONDecodeError as e:
+                print("Error decoding JSON:", e)  # Error handling
+    else:
+        print("Metadata file does not exist.")  # Debug statement
     return []
 
-# In your main function when loading saved simulations
-saved_simulations = load_saved_simulations()
-if saved_simulations:
-    print("Saved simulations found:", saved_simulations)  # Debug statement
-else:
-    print("No saved simulations found.")  # Debug statement
 # Load the instances data and master data
 @st.cache_data
 def load_data():
@@ -332,6 +331,10 @@ def main():
     
         # Load metadata of saved simulations
         saved_simulations = load_saved_simulations()
+        if saved_simulations:
+            print("Saved simulations found:", saved_simulations)  # Debug statement
+        else:
+            print("No saved simulations found.")  # Debug statement
     
         if saved_simulations:
             sim_names = [sim["name"] for sim in saved_simulations]
@@ -343,7 +346,7 @@ def main():
                 threshold = sim_data["threshold"]
                 weight_range = sim_data["weight_range"]
                 file_path = sim_data["file_path"]
-                
+    
                 # Display the saved threshold and weight range
                 st.write(f"**Weight Range:** {weight_range}")
                 st.write(f"**Threshold:** {threshold}")
@@ -365,7 +368,6 @@ def main():
                     time.sleep(1)
         else:
             st.info("No saved simulations found.")
-
     # Tab 3: Documentation
     with tab3:
         st.header("Documentation")
