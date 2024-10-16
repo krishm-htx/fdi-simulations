@@ -51,7 +51,7 @@ def run_simulation(df, W_s_range, threshold):
 
 # Function to create the histogram plot
 def plot_histogram(histogram_data, threshold):
-    plt.figure(figsize=(5, 3))
+    plt.figure(figsize=(6, 4))
     plt.bar(histogram_data.keys(), histogram_data.values(), color='skyblue')
     plt.xlabel('Object ID')
     plt.ylabel(f'FDI Frequency (Count of times FDI > {threshold})')
