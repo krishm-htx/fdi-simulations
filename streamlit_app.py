@@ -9,6 +9,8 @@ import contextily as ctx
 import io
 import folium
 from streamlit_folium import folium_static
+import requests
+from io import BytesIO
 
 # Load your PDFs and data from GitHub or local repo
 PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
@@ -242,14 +244,38 @@ def main():
     # Tab 3: Methodology & Help
     with tab3:
         st.header("Documentation")
-        st.write("Downloa the methodology documentation:")
-        with open("methodology.pdf", "rb") as f:
-            st.download_button(
-                'Download Methodology Documentation', 
-                data=f, 
-                file_name='methodology.pdf', 
-                mime='application/pdf'
-            )
+        
+        # Methodology PDF
+        st.subheader("Methodology Documentation")
+        try:
+            response = requests.get("https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf")
+            if response.status_code == 200:
+                st.download_button(
+                    'Download Methodology Documentation', 
+                    data=BytesIO(response.content), 
+                    file_name='FDI-Sims-method.pdf', 
+                    mime='application/pdf'
+                )
+            else:
+                st.error("Failed to fetch the methodology documentation. Please try again later.")
+        except Exception as e:
+            st.error(f"An error occurred while fetching the methodology documentation: {str(e)}")
+        
+        # Help PDF
+        st.subheader("Help Documentation")
+        try:
+            response = requests.get("https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf")
+            if response.status_code == 200:
+                st.download_button(
+                    'Download Help Documentation', 
+                    data=BytesIO(response.content), 
+                    file_name='Excel_Import_to_ArcPro.pdf', 
+                    mime='application/pdf'
+                )
+            else:
+                st.error("Failed to fetch the help documentation. Please try again later.")
+        except Exception as e:
+            st.error(f"An error occurred while fetching the help documentation: {str(e)}")
         
 if __name__ == "__main__":
     main()
