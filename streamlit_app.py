@@ -12,7 +12,8 @@ from streamlit_folium import folium_static
 import requests
 from io import BytesIO
 import time
-
+import json
+import os
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
 
@@ -133,7 +134,32 @@ def find_clusters(hex_list, min_cluster_size=3):
 
     return clusters
 
-# Load the instances data and master data
+def save_metadata(metadata):
+    metadata_file = "/mnt/data/simulations_metadata.json"
+
+    # Check if metadata file exists, create if not
+    if not os.path.exists(metadata_file):
+        with open(metadata_file, 'w') as f:
+            json.dump([], f)
+
+    # Load existing metadata
+    with open(metadata_file, 'r') as f:
+        data = json.load(f)
+
+    # Append new simulation metadata
+    data.append(metadata)
+
+    # Save updated metadata back to file
+    with open(metadata_file, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def load_saved_simulations():
+    metadata_file = "/mnt/data/simulations_metadata.json"
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r') as f:
+            return json.load(f)
+    return []
+
 # Load the instances data and master data
 @st.cache_data
 def load_data():
@@ -249,19 +275,76 @@ def main():
             with st.spinner("Generating map..."):
                 plot_clusters_on_map(df_filtered)
                 time.sleep(1)
+            
+            # Ask user if they want to save the simulation
+            save_simulation = st.radio("Do you want to save this simulation?", ("No", "Yes"))
+            
+            if save_simulation == "Yes":
+                sim_name = st.text_input("Enter a name for this simulation:")
+                
+                if sim_name and st.button("Save Simulation"):
+                    # Prepare the data to save
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_filtered.to_excel(writer, index=False)
+                    output.seek(0)
+                    
+                    # Save the file to the repository (you need to handle repository/file storage logic)
+                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your repository location
+                    with open(save_path, 'wb') as f:
+                        f.write(output.read())
+            
+                    # Save the simulation metadata (threshold and weight range) to a JSON file or other format
+                    metadata = {
+                        "name": sim_name,
+                        "threshold": threshold,
+                        "weight_range": w_structural,
+                        "file_path": save_path
+                    }
+                    save_metadata(metadata)
+                    
+                    st.success(f"Simulation '{sim_name}' saved successfully!")
+
 
     # Tab 2: View Saved Results
     with tab2:
-        st.header("View Saved Results")
-        saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
-        if saved_file is not None:
-            saved_df = pd.read_excel(saved_file)
-            st.dataframe(saved_df)
-    
+    st.header("View Saved Results")
+
+    # Load metadata of saved simulations
+    saved_simulations = load_saved_simulations()  # Implement this function to read from the metadata JSON or database
+
+    if saved_simulations:
+        sim_names = [sim["name"] for sim in saved_simulations]
+        selected_sim = st.selectbox("Choose a saved simulation to view:", sim_names)
+
+        if selected_sim:
+            # Find the selected simulation's metadata
+            sim_data = next(sim for sim in saved_simulations if sim["name"] == selected_sim)
+            threshold = sim_data["threshold"]
+            weight_range = sim_data["weight_range"]
+            file_path = sim_data["file_path"]
+            
+            # Display the saved threshold and weight range
+            st.write(f"**Weight Range:** {weight_range}")
+            st.write(f"**Threshold:** {threshold}")
+
+            # Load the saved Excel file
+            df_saved = pd.read_excel(file_path)
+            st.dataframe(df_saved)
+
+            # Plot histogram from saved results
             st.subheader("Histogram of Saved Results")
             with st.spinner("Generating histogram..."):
-                plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
+                plot_histogram(df_saved['FDI_Count'].to_dict(), threshold)
                 time.sleep(1)
+
+            # Display the saved map
+            st.subheader("Clustered Hexagons Map")
+            with st.spinner("Generating map..."):
+                plot_clusters_on_map(df_saved)
+                time.sleep(1)
+    else:
+        st.info("No saved simulations found.")
 
     # Tab 3: Documentation
     with tab3:
