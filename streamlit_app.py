@@ -152,18 +152,26 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    #st.set_page_config(layout="wide")
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
     with st.sidebar:
         st.header("Simulation Parameters")
-        ws_start = st.slider('W_s Start Point:', 0, 100, 50)
-        ws_end = st.slider('W_s End Point:', ws_start, 100, 100)
-        wp_start = 100 - ws_start
-        wp_end = 100 - ws_end
-        st.write(f"W_p range: {wp_start} to {wp_end}")
-        threshold = st.number_input('FDI Threshold:', value=4.8)
+        
+        st.subheader("Weights")
+        w_structural = st.slider(
+            "Weight of Structural Flooding Instances (W_s)",
+            0, 100, (50, 100), 
+            help="Slide to set the range for the weight of structural flooding instances."
+        )
+        st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
+        
+        threshold = st.number_input(
+            'FDI Threshold:', 
+            value=4.8, 
+            help="Set the threshold for FDI calculations."
+        )
+        
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
 
     # Create Tabs
@@ -179,14 +187,19 @@ def main():
         st.header("Run FDI Simulation")
         st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
         
-        # Run simulation when button is clicked
-        if st.button("Run Simulation"):
+        if st.button("Run Simulation", key="run_sim"):
             with st.spinner("Running simulation..."):
-                W_s_range = np.arange(ws_start, ws_end + 1)
+                W_s_range = np.arange(w_structural[0], w_structural[1] + 1)
                 df, histogram_data = run_simulation(df, W_s_range, threshold)
             
-            # Display results
-            st.write(df)
+            st.success("Simulation completed successfully!")
+            
+            # Display results in an expander
+            with st.expander("View Detailed Results", expanded=False):
+                st.dataframe(df)
+
+            # Plot histogram
+            st.subheader("FDI Frequency Distribution")
             plot_histogram(histogram_data, threshold)
 
             # Download simulation results
@@ -194,47 +207,49 @@ def main():
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False)
             output.seek(0)
-            st.download_button('Download Simulation Results', data=output, file_name='fdi_simulation_results.xlsx')
+            st.download_button(
+                'Download Simulation Results', 
+                data=output, 
+                file_name='fdi_simulation_results.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
 
-            # Find clusters
+            # Find and display clusters
             hexes = df[df['FDI_Count'] > 1]['GRID_ID'].tolist()
             clusters = find_clusters(hexes)
 
-            # Add cluster information to the DataFrame
             df['cluster'] = df['GRID_ID'].apply(
                 lambda x: 1 if any(x in cluster for cluster in clusters) else 0
             )
 
-            # Filter for clusters > 0
             df_filtered = df[df['cluster'] > 0]
-
-            # Convert H3 indices to lat, lon
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
 
-            # Plot clusters on a map
             st.subheader("Clustered Hexagons Over Houston, TX")
             plot_clusters_on_map(df_filtered)
 
-    
     # Tab 2: View Saved Results
     with tab2:
         st.header("View Saved Results")
         saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
         if saved_file is not None:
             saved_df = pd.read_excel(saved_file)
-            st.write(saved_df)
+            st.dataframe(saved_df)
     
-            # Plot histogram and clusters from saved results
-            st.write("Histogram of Saved Results")
+            st.subheader("Histogram of Saved Results")
             plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
-    
+
     # Tab 3: Methodology & Help
     with tab3:
         st.header("Documentation")
-        st.write("Download the following PDFs for more information:")
-        
-        st.write("[Methodology PDF](%s)" % PDF_METHOD_PATH)
-        st.write("[Help PDF for Importing to ArcGIS Pro](%s)" % PDF_HELP_PATH)
+        st.write("Downloa the methodology documentation:")
+        with open("methodology.pdf", "rb") as f:
+            st.download_button(
+                'Download Methodology Documentation', 
+                data=f, 
+                file_name='methodology.pdf', 
+                mime='application/pdf'
+            )
         
 if __name__ == "__main__":
     main()
