@@ -206,7 +206,7 @@ def main():
 
             # Plot histogram
             st.subheader("FDI Frequency Distribution")
-             with st.spinner("Generating histogram..."):
+            with st.spinner("Generating histogram..."):
                 plot_histogram(histogram_data, threshold)
                 time.sleep(1)
 
