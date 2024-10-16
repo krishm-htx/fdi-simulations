@@ -79,7 +79,7 @@ def plot_histogram(histogram_data, threshold):
     plt.figure(figsize=(6, 4))
     plt.bar(histogram_data.keys(), histogram_data.values(), color='skyblue')
     plt.xlabel('Object ID')
-    plt.ylabel(f'FDI Frequency (Count of times FDI > {threshold})')
+    plt.ylabel(f'Times FDI > {threshold}')
     plt.title('Histogram of FDI Frequency per Object')
     plt.xticks(rotation=90)
     plt.tight_layout()
@@ -187,9 +187,8 @@ def main():
         # If we reach here, the user is logged in
         # Main app content
         with st.sidebar:
-            st.header("Simulation Parameters")
+            st.header("Simulation Parameters", help = "With an increment of 1 we calculate the FDI for each weight combination in the specified range. And if the FDI exceeds the threshold we add it to a score.")
             
-            st.subheader("Weights")
             w_structural = st.slider(
                 "Weight of Structural Flooding Instances",
                 0, 100, (50, 100), 
