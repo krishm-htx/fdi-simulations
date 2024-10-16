@@ -29,6 +29,9 @@ def calculate_fdi(W_s, I_s, I_p):
     W_p = 100 - W_s
     return (W_s * I_s + W_p * I_p) / 100
 
+def h3_to_lat_lng(h3_address):
+    lat, lng = h3.cell_to_lat_lng(h3_address)
+    return lat, lng
 # Function to run FDI simulation
 def run_simulation(df, W_s_range, threshold):
     df['FDI_Count'] = 0
@@ -247,12 +250,14 @@ def main():
 
             # Data preparation
             df_filtered = df[df['cluster'] > 0].copy()
-            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_lat_lng(x)))
-            
+            df_filtered['lat_lng'] = df_filtered['GRID_ID'].apply(h3_to_lat_lng)
+            df_filtered['lat'] = df_filtered['lat_lng'].apply(lambda x: x[0])
+            df_filtered['lon'] = df_filtered['lat_lng'].apply(lambda x: x[1])
+        
             # Convert H3 cells to polygons
             df_filtered['geometry'] = df_filtered['GRID_ID'].apply(lambda h: {
                 'type': 'Polygon',
-                'coordinates': [h3.cell_to_boundary(h, geo_json=True)]
+                'coordinates': [h3.h3_to_geo_boundary(h, geo_json=True)]
             })
         
             # Add download button for cluster Excel file
