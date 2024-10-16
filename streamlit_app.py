@@ -39,8 +39,8 @@ def login():
     password = st.text_input("Password", type='password')
     if st.button("Login"):
         # You should replace this with a secure way to store credentials
-        hashed_pswd = make_hashes('admin123')
-        if username == 'admin' and check_hashes(password, hashed_pswd):
+        hashed_pswd = make_hashes('StormwaterPlanning@htx')
+        if username == 'Krish' or username == "Paresh" or username == "Mayuri" or username == "Jesse" or username == "Jordan" and check_hashes(password, hashed_pswd):
             st.success("Logged In as {}".format(username))
             return True
         else:
@@ -227,7 +227,8 @@ def main():
                 st.success("Simulation completed successfully!")
                 
                 # Display results in an expander
-                with st.expander("View Detailed Results", expanded=False):
+                with st.expander("View Results in a table", expanded=False):
+                    st.info("If you want to download this, click the download simulation results button")
                     st.dataframe(df)
 
                 # Plot histogram
