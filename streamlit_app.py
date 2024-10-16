@@ -13,6 +13,9 @@ import requests
 from io import BytesIO
 import time
 
+# Set page config at the very beginning of the script
+st.set_page_config(layout="wide", page_title="FDI Simulation App")
+
 # Load your PDFs and data from GitHub or local repo
 PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
 PDF_HELP_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf"
@@ -155,7 +158,7 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    st.set_page_config(layout="wide", page_title="FDI Simulation App")
+    #st.set_page_config(layout="wide", page_title="FDI Simulation App")
     
     st.title('FDI Simulation App')
 
