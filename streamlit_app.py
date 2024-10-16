@@ -11,6 +11,7 @@ import folium
 from streamlit_folium import folium_static
 import requests
 from io import BytesIO
+import time
 
 # Load your PDFs and data from GitHub or local repo
 PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf"
@@ -154,6 +155,8 @@ def load_data():
 df, master_df = load_data()
 
 def main():
+    st.set_page_config(layout="wide", page_title="FDI Simulation App")
+    
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
@@ -174,10 +177,13 @@ def main():
             help="Set the threshold for FDI calculations."
         )
         
+        if st.button("Reset Parameters"):
+            st.experimental_rerun()
+        
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
 
     # Create Tabs
-    tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Methodology & Help"])
+    tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
 
     # Load data
     df, master_df = load_data()
@@ -188,11 +194,15 @@ def main():
     with tab1:
         st.header("Run FDI Simulation")
         st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
+        st.info("If you need help understanding what this app does or how to open these results in ArcPro, please refer to the 'Documentation' tab.")
         
         if st.button("Run Simulation", key="run_sim"):
             with st.spinner("Running simulation..."):
                 W_s_range = np.arange(w_structural[0], w_structural[1] + 1)
                 df, histogram_data = run_simulation(df, W_s_range, threshold)
+                
+                # Simulate a delay to show the spinner
+                time.sleep(2)
             
             st.success("Simulation completed successfully!")
             
@@ -232,50 +242,33 @@ def main():
 
     # Tab 2: View Saved Results
     with tab2:
-        st.header("View Saved Results")
-        saved_file = st.file_uploader("Upload saved simulation results", type=["xlsx"])
-        if saved_file is not None:
-            saved_df = pd.read_excel(saved_file)
-            st.dataframe(saved_df)
-    
-            st.subheader("Histogram of Saved Results")
-            plot_histogram(saved_df['FDI_Count'].to_dict(), threshold)
+         # ... (previous code remains the same)
 
-    # Tab 3: Methodology & Help
+    # Tab 3: Documentation
     with tab3:
         st.header("Documentation")
         
         # Methodology PDF
         st.subheader("Methodology Documentation")
-        try:
-            response = requests.get("https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Sims-method.pdf")
-            if response.status_code == 200:
-                st.download_button(
-                    'Download Methodology Documentation', 
-                    data=BytesIO(response.content), 
-                    file_name='FDI-Sims-method.pdf', 
-                    mime='application/pdf'
-                )
-            else:
-                st.error("Failed to fetch the methodology documentation. Please try again later.")
-        except Exception as e:
-            st.error(f"An error occurred while fetching the methodology documentation: {str(e)}")
+        with st.expander("View Methodology Description", expanded=False):
+            st.write("Extract Flooding Data:\n\nObtain total structural and population flooding data for each hexagonal area. This data should be exported into an Excel file with relevant fields such as Hex ID, structural instances, and population instances.\n\nAssign Instance Factors:\n\nDistribute the data into equal ranges and assign instance factors for both structural flooding (Is) and population flooding (Ip).\n\nUpload Data:\n\nThe Excel file with structural instances, population instances, and Hex IDs is uploaded to the tool or software (possibly GIS or similar processing tool).\n\nFDI Calculation:\n\nThe Flood Damage Index (FDI) is calculated using the formula:\n\n𝐹𝐷𝐼 = 𝑊𝑠 × 𝐼𝑠 + 𝑊𝑝 × 𝐼𝑝\n\nWhere:\n\n𝑊𝑠 = Weight for structural instances (percentage, ranging from 0% to 100%)\n\n𝐼𝑠 = Structural flooding instance factor\n\n𝑊𝑝 = Weight for population instances (percentage, equal to 100% minus 𝑊𝑠)\n\n𝐼𝑝 = Population flooding instance factor\n\nSet Weights and Threshold:\n\nChoose a specific 𝑊𝑠 value (weight for structural flooding) and calculate the corresponding FDI for each hexagon. You can iterate through different 𝑊𝑠 values to determine the appropriate threshold for FDI that you want to focus on.\n\nCluster Identification:\n\nAfter calculating the FDI, group neighboring hexagons with high FDI values (greater than the threshold, e.g., FDI > 4.8) into clusters. This clustering step can help identify significant areas of flooding impact.\n\nSave and Run Scenarios:\n\nThe scenario is saved, and additional scenarios can be run with adjusted weights or different parameters.\n\nExample:\n\nIf you set 𝑊𝑠 = 50% and 𝑊𝑝 = 50%, and you have structural and population instance factors: 𝐼𝑠 = 5 and 𝐼𝑝 = 3, you would calculate the FDI for various weight configurations. For instance, with 𝑊𝑠 = 99% and 𝑊𝑝 = 1%, if FDI > 4.8, it passes the threshold.")
+            st.download_button(
+                'Download Methodology Documentation', 
+                data=BytesIO(requests.get(PDF_METHOD_PATH).content), 
+                file_name='FDI-Sims-method.pdf', 
+                mime='application/pdf'
+            )
         
         # Help PDF
-        st.subheader("Help Documentation")
-        try:
-            response = requests.get("https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf")
-            if response.status_code == 200:
-                st.download_button(
-                    'Download Help Documentation', 
-                    data=BytesIO(response.content), 
-                    file_name='Excel_Import_to_ArcPro.pdf', 
-                    mime='application/pdf'
-                )
-            else:
-                st.error("Failed to fetch the help documentation. Please try again later.")
-        except Exception as e:
-            st.error(f"An error occurred while fetching the help documentation: {str(e)}")
-        
+        st.subheader("Import to ArcPro")
+        with st.expander("View Import Instructions", expanded=False):
+            st.write("Step 1: Copy the Layer H3_R9\nAction: In the Drawing Order panel, right-click the layer H3_R9.\nSelect: From the context menu, choose Copy.\nPaste: Right-click in an empty area and select Paste to create a duplicate of the H3_R9 layer.\n\nStep 2: Add New Data\nNavigate: In the ribbon at the top, under the Map tab, select Add Data.\nFile Path: Go to your download folder and select the file updated_FDI_results_with_master.\nSheet Selection: Choose Sheet 1$ from the file to import the data.\n\nStep 3: Join Data to H3_R9_copy\nLocate: Find the newly created copy H3_R9_copy in the Drawing Order.\nRight-click: On the H3_R9_copy layer, select Joins and Relates and click Add Join.\n\nStep 4: Set Join Fields\nInput Field: Set the Input Table as H3_R9_copy and the Input Field as OBJECT ID.\nJoin Table: Select Sheet1 (imported in Step 2) as the Join Table.\nJoin Field: Ensure the Join Field is OBJECTID in both tables.\n\nStep 5: Symbology\nOpen Symbology: Go to the H3_R9_copy layer, right-click, and choose Symbology.\nChoose Symbology Type: Set the type to Graduated Colors.\nSet Field: In the field options, select Cluster_Assigned to apply color gradation based on clusters.\n\nStep 6: View Results\nAfter applying the symbology, the map will display hexagons color-coded based on the cluster assignments, showing the distribution of the data visually across the region.")
+            st .download_button(
+                'Download Import Instructions', 
+                data=BytesIO(requests.get(PDF_HELP_PATH).content), 
+                file_name='Excel_Import_to_ArcPro.pdf', 
+                mime='application/pdf'
+            )
+
 if __name__ == "__main__":
     main()
