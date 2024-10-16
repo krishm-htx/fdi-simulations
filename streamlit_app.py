@@ -305,8 +305,5 @@ def main():
                 mime='application/pdf'
             )
 
-    else:
-         st.info("Please login to access the app.")
-
 if __name__ == "__main__":
     main()
