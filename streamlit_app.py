@@ -12,8 +12,6 @@ from streamlit_folium import folium_static
 import requests
 from io import BytesIO
 import time
-import plotly.express as px
-import plotly.graph_objects as go
 
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
@@ -29,9 +27,6 @@ def calculate_fdi(W_s, I_s, I_p):
     W_p = 100 - W_s
     return (W_s * I_s + W_p * I_p) / 100
 
-def h3_to_lat_lng(h3_address):
-    lat, lng = h3.cell_to_lat_lng(h3_address)
-    return lat, lng
 # Function to run FDI simulation
 def run_simulation(df, W_s_range, threshold):
     df['FDI_Count'] = 0
@@ -78,29 +73,41 @@ def hexagons_to_geodataframe(hex_ids):
     return gdf
 
 # Function to plot clustered hexagons on a map
-def plot_clusters_on_map(df):
-    fig = go.Figure(go.Choroplethmapbox(
-        geojson=df['geometry'].__geo_interface__,
-        locations=df.index,
-        z=df['FDI_Count'],
-        colorscale="RdYlGn_r",
-        zmin=df['FDI_Count'].min(),
-        zmax=df['FDI_Count'].max(),
-        marker_opacity=0.5,
-        marker_line_width=0
-    ))
+def plot_clusters_on_map(df_filtered):
+    center_lat = df_filtered['lat'].mean()
+    center_lon = df_filtered['lon'].mean()
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
 
-    fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox=dict(
-            center=dict(lat=df['lat'].mean(), lon=df['lon'].mean()),
-            zoom=10
-        ),
-        height=600,
-        margin={"r":0,"t":0,"l":0,"b":0}
-    )
+    # Color scale for FDI count
+    def get_color(fdi_count):
+        return 'red'
 
-    st.plotly_chart(fig, use_container_width=True)
+    for _, row in df_filtered.iterrows():
+        hexagon = h3.cell_to_boundary(row['GRID_ID'])
+        folium.Polygon(
+            locations=hexagon,
+            popup=f"Cluster: {row['cluster']}<br>FDI Count: {row['FDI_Count']}",
+            color='black',
+            weight=1,
+            fill=True,
+            fill_color=get_color(row['FDI_Count']),
+            fill_opacity=0.7
+        ).add_to(m)
+
+    # Add a legend
+    legend_html = '''
+         <div style="position: fixed; 
+                     bottom: 50px; left: 50px; width: 120px; height: 90px; 
+                     border:2px solid grey; z-index:9999; font-size:14px;
+                     ">&nbsp; FDI Count <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:green"></i>&nbsp; 0-25 <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:yellow"></i>&nbsp; 26-50 <br>
+             &nbsp; <i class="fa fa-map-marker fa-2x" style="color:red"></i>&nbsp; 51+ 
+         </div>
+         '''
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    folium_static(m)
 
 def find_clusters(hex_list, min_cluster_size=3):
     clusters = []
@@ -146,55 +153,32 @@ def load_data():
 df, master_df = load_data()
 
 def main():
-    # Initialize session state
-    if 'reset' not in st.session_state:
-        st.session_state.reset = False
-
+    #st.set_page_config(layout="wide", page_title="FDI Simulation App")
+    
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
     with st.sidebar:
         st.header("Simulation Parameters")
         
-        if st.session_state.reset:
-            # Reset values
-            w_structural = (50, 100)
-            threshold = 4.8
-            st.session_state.reset = False
-        else:
-            # Use current values
-            w_structural = st.session_state.get('w_structural', (50, 100))
-            threshold = st.session_state.get('threshold', 4.8)
-
         st.subheader("Weights")
         w_structural = st.slider(
             "Weight of Structural Flooding Instances (W_s)",
-            0, 100, w_structural, 
-            help="Slide to set the range for the weight of structural flooding instances.",
-            key="w_structural"
+            0, 100, (50, 100), 
+            help="Slide to set the range for the weight of structural flooding instances."
         )
         st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
         
         threshold = st.number_input(
             'FDI Threshold:', 
-            value=threshold, 
-            help="Set the threshold for FDI calculations.",
-            key="threshold"
+            value=4.8, 
+            help="Set the threshold for FDI calculations."
         )
         
         if st.button("Reset Parameters"):
-            st.session_state.reset = True
-            st.rerun()
+            st.experimental_rerun()
         
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
-
-    
-    # Reset logic
-    if st.session_state.reset:
-        st.session_state.w_structural = (50, 100)
-        st.session_state.threshold = 4.8
-        st.session_state.reset = False
-        st.experimental_rerun()
 
     # Create Tabs
     tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
@@ -248,37 +232,10 @@ def main():
                 lambda x: 1 if any(x in cluster for cluster in clusters) else 0
             )
 
-            # Data preparation
-            df_filtered = df[df['cluster'] > 0].copy()
-            df_filtered['lat_lng'] = df_filtered['GRID_ID'].apply(h3_to_lat_lng)
-            df_filtered['lat'] = df_filtered['lat_lng'].apply(lambda x: x[0])
-            df_filtered['lon'] = df_filtered['lat_lng'].apply(lambda x: x[1])
-        
-            # Convert H3 cells to polygons
-            df_filtered['geometry'] = df_filtered['GRID_ID'].apply(lambda h: {
-                'type': 'Polygon',
-                'coordinates': [h3.h3_to_geo_boundary(h, geo_json=True)]
-            })
-        
-            # Add download button for cluster Excel file
-            st.subheader("Download Cluster Data")
-            
-            # Create a BytesIO object to store the Excel file
-            excel_buffer = io.BytesIO()
-            
-            # Save the DataFrame to the BytesIO object
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                df_filtered.to_excel(writer, index=False, sheet_name='Cluster_Data')
-            
-            # Create a download button
-            st.download_button(
-                label="Download Cluster Excel File",
-                data=excel_buffer.getvalue(),
-                file_name="cluster_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        
-            st.subheader("FDI Count Distribution Over Houston, TX")
+            df_filtered = df[df['cluster'] > 0]
+            df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
+
+            st.subheader("Clustered Hexagons Over Houston, TX")
             plot_clusters_on_map(df_filtered)
 
     # Tab 2: View Saved Results
