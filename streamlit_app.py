@@ -154,7 +154,9 @@ df, master_df = load_data()
 
 def main():
     #st.set_page_config(layout="wide", page_title="FDI Simulation App")
-    
+    if 'reset' not in st.session_state:
+        st.session_state.reset = False
+        
     st.title('FDI Simulation App')
 
     # Sidebar for inputs
@@ -165,21 +167,29 @@ def main():
         w_structural = st.slider(
             "Weight of Structural Flooding Instances (W_s)",
             0, 100, (50, 100), 
-            help="Slide to set the range for the weight of structural flooding instances."
+            help="Slide to set the range for the weight of structural flooding instances.",
+            key = "w_structural"
         )
         st.write(f"Weight of Population Flooding Instances (W_p): {100 - w_structural[1]} to {100 - w_structural[0]}")
         
         threshold = st.number_input(
             'FDI Threshold:', 
             value=4.8, 
-            help="Set the threshold for FDI calculations."
+            help="Set the threshold for FDI calculations.",
+            key = "threshold"
         )
         
         if st.button("Reset Parameters"):
+            st.session_state.reset = True
             st.experimental_rerun()
         
         st.info("Adjust these parameters and click 'Run Simulation' to start.")
-
+     # Reset logic
+    if st.session_state.reset:
+        st.session_state.w_structural = (50, 100)
+        st.session_state.threshold = 4.8
+        st.session_state.reset = False
+        st.experimental_rerun()
     # Create Tabs
     tab1, tab2, tab3 = st.tabs(["Run Simulation", "View Saved Results", "Documentation"])
 
