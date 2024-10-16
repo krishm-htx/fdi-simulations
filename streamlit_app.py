@@ -272,38 +272,37 @@ def main():
                 mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             
-            with st.spinner("Generating map..."):
+           with st.spinner("Generating map..."):
                 plot_clusters_on_map(df_filtered)
                 time.sleep(1)
             
-            # Ask user if they want to save the simulation
-            save_simulation = st.radio("Do you want to save this simulation?", ("No", "Yes"))
+            # Directly show the input for the simulation name and save button
+            sim_name = st.text_input("Enter a name for this simulation:")
             
-            if save_simulation == "Yes":
-                sim_name = st.text_input("Enter a name for this simulation:")
-                
-                if sim_name and st.button("Save Simulation"):
+            if sim_name:
+                if st.button("Save Simulation"):
                     # Prepare the data to save
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df_filtered.to_excel(writer, index=False)
                     output.seek(0)
                     
-                    # Save the file to the repository (you need to handle repository/file storage logic)
-                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your repository location
+                    # Save the file to a predefined path (adjust this based on your file system)
+                    save_path = f"/mnt/data/simulations/{sim_name}.xlsx"  # Adjust to your storage path
                     with open(save_path, 'wb') as f:
                         f.write(output.read())
             
-                    # Save the simulation metadata (threshold and weight range) to a JSON file or other format
+                    # Save the simulation metadata (threshold and weight range) to a JSON or another file
                     metadata = {
                         "name": sim_name,
                         "threshold": threshold,
                         "weight_range": w_structural,
                         "file_path": save_path
                     }
-                    save_metadata(metadata)
+                    save_metadata(metadata)  # Call the save_metadata function to record this simulation
                     
                     st.success(f"Simulation '{sim_name}' saved successfully!")
+
 
 
     # Tab 2: View Saved Results
