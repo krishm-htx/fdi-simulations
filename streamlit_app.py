@@ -245,10 +245,10 @@ def main():
                 lambda x: 1 if any(x in cluster for cluster in clusters) else 0
             )
 
-# Data preparation
+            # Data preparation
             df_filtered = df[df['cluster'] > 0].copy()
             df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3.cell_to_lat_lng(x)))
-        
+            
             # Convert H3 cells to polygons
             df_filtered['geometry'] = df_filtered['GRID_ID'].apply(lambda h: {
                 'type': 'Polygon',
