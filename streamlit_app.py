@@ -51,8 +51,8 @@ def plot_clustered_hexagons(df, W_s, threshold):
     df_filtered = df[df['cluster'] > 0].copy()
     df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3 .cell_to_latlng(x)))
 
-    center_lat = df['lat'].mean()
-    center_lon = df['lon'].mean()
+    center_lat = df_filtered['lat'].mean()
+    center_lon = df_filtered['lon'].mean()
     m = folium.Map(location=[center_lat, center_lon], zoom_start=8.5, width="100%", height="400px")
 
     def get_color(cluster):
