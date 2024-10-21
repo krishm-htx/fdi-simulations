@@ -29,51 +29,41 @@ PDF_HELP_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Im
 INSTANCES_FILE_PATH ="https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Instances_DATA.xlsx"
 MASTER_FILE_PATH = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
 
-def plot_sensitivity_histogram(df, W_s, threshold):
-    plt.figure(figsize=(10, 6))
-    FDI = calculate_fdi(W_s, df['Is'], df['Ip'])
-    bins = np.arange(0, max(FDI) + 0.2, 0.2)
-    plt.hist(FDI, bins=bins, edgecolor='black')
-    plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
-    plt.xlabel('FDI Value')
-    plt.ylabel('Frequency')
-    plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
-    st.pyplot(plt)
+def plot_sensitivity_histogram(df, threshold):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bins = np.arange(1, df['FDI'].max() + 0.1, 0.1)
+    n, bins, patches = ax.hist(df['FDI'], bins=bins, edgecolor='black')
+    
+    ax.set_xlabel('FDI')
+    ax.set_ylabel('Frequency')
+    ax.set_xticks(np.arange(1, df['FDI'].max() + 1, 1))
+    ax.set_xticklabels([f'{x:.1f}' for x in ax.get_xticks()])
+    
+    for i, v in enumerate(n):
+        if v > 0:
+            ax.text(bins[i] + 0.05, v, str(int(v)), fontsize=8, va='bottom', ha='left')
+    
+    ax.axvline(x=threshold, color='r', linestyle='--', label=f'Threshold: {threshold}')
+    ax.legend()
+    
+    st.pyplot(fig))
 
-def plot_clustered_hexagons(df, W_s, threshold):
-    df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
-    df['cluster'] = (df['FDI'] > threshold).astype(int)
-    df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
-
+@st.cache_data
+def plot_clustered_hexagons(df, threshold):
     center_lat = df['lat'].mean()
     center_lon = df['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
-
-    def get_color(cluster):
-        return 'blue' if cluster == 1 else 'none'
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
 
     for _, row in df.iterrows():
+        color = 'red' if row['FDI'] >= threshold else 'green'
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
         folium.Polygon(
             locations=hexagon,
-            popup=f"FDI: {row['FDI']:.2f}",
-            color='black',
-            weight=1,
+            popup=f"Grid ID: {row['GRID_ID']}<br>FDI: {row['FDI']:.2f}",
+            color=color,
             fill=True,
-            fill_color=get_color(row['cluster']),
-            fill_opacity=0.65
+            fill_color=color, fill_opacity=0.5
         ).add_to(m)
-
-    legend_html = '''
-         <div style="position: fixed; 
-                     bottom: 50px; left: 70px; width: 150px; height: 90px; 
-                     border:2px solid grey; z-index:9999; font-size:14px;
-                     ">&nbsp; Cluster <br>
-             &nbsp; <i class="fa fa-square fa-2x" style="color:blue"></i>&nbsp; Below Threshold <br>
-             &nbsp; <i class="fa fa-square fa-2x" style="color:red"></i>&nbsp; Above Threshold
-         </div>
-         '''
-    m.get_root().html.add_child(folium.Element(legend_html))
 
     return m
 def plot_oat(data):
@@ -119,28 +109,48 @@ def plot_interactive_oat(df):
     # Plot the OAT graph for the selected hexagon
     st.subheader(f"One-at-a-Time Sensitivity Analysis for Grid ID {selected_grid_id}")
     plot_oat(selected_hexagon_data)
-
+@st.cache_data
+def prepare_fdi_data(df, W_s):
+    df['FDI'] = W_s * df['Is'] + (100 - W_s) * df['Ip']
+    return df
 def sensitivity_analysis_tab(df):
     st.header("Sensitivity Analysis")
     
-    W_s_range = range(0, 101, 5)
-    threshold = st.slider("Select threshold value", 0.0, 10.0, 4.8, 0.1)
-    selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
-
     col1, col2 = st.columns(2)
-
+    
     with col1:
-        st.subheader("FDI Distribution")
-        plot_sensitivity_histogram(df, selected_W_s, threshold)
-
+        W_s_range = range(0, 101, 5)
+        selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
+    
     with col2:
+        threshold = st.slider("Select threshold value", 1.0, 10.0, 4.8, 0.1)
+
+    df_with_fdi = prepare_fdi_data(df, selected_W_s)
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.subheader("FDI Distribution")
+        plot_sensitivity_histogram(df_with_fdi, threshold)
+
+    with col4:
         st.subheader("Clustered Hexagons")
-        m = plot_clustered_hexagons(df, selected_W_s, threshold)
+        m = plot_clustered_hexagons(df_with_fdi, threshold)
         folium_static(m)
+
+    # Statistical data
+    st.subheader("FDI Statistics")
+    stats_df = pd.DataFrame({
+        'Statistic': ['Mean FDI', 'Median FDI', 'FDI Variance'],
+        'Value': [df_with_fdi['FDI'].mean(), df_with_fdi['FDI'].median(), df_with_fdi['FDI'].var()]
+    })
+    st.table(stats_df)
 
     # Interactive OAT analysis
     st.subheader("Interactive One-at-a-Time Sensitivity Analysis")
-    plot_interactive_oat(df)
+    grid_id = st.text_input("Enter Grid ID")
+    if grid_id:
+        plot_interactive_oat(df, grid_id)
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
