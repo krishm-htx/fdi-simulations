@@ -51,7 +51,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
     scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
     ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
     plt.colorbar(scatter, label='Cluster')
-    st.pyplot(fig
+    st.pyplot(fig)
 
 def plot_oat_sensitivity(df, parameter, parameter_range, fixed_params):
     results = []
