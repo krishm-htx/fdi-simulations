@@ -131,9 +131,8 @@ def sensitivity_analysis_tab(df):
     st.header("Sensitivity Analysis")
     
     W_s_range = range(0, 101, 5)
-    threshold = st.slider("Select threshold value", 0.0, 5.0, 4.8, 0.1)
     selected_W_s = st.select_slider("Select Weight of structural flooding value", options=W_s_range)
-
+    threshold = st.slider("Select FDI threshold value", 0.0, 5.0, 4.8, 0.1)
     col1, col2 = st.columns(2)
 
     with col1:
@@ -142,11 +141,13 @@ def sensitivity_analysis_tab(df):
 
     with col2:
         st.subheader("Clustered Hexagons")
+        st.info("This takes about 10 seconds.")
         m = plot_clustered_hexagons(df, selected_W_s, threshold)
         folium_static(m)
 
     # Interactive OAT analysis
     st.subheader("Interactive One-at-a-Time Sensitivity Analysis")
+    st.write("Click on the hexagon you want to analyze, copy it and paste it in the text box below to see the FDI fluctuatations with weight changes")
     plot_interactive_oat(df)
 
 def make_hashes(password):
