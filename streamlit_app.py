@@ -43,32 +43,71 @@ def plot_sensitivity_histogram(df, W_s, threshold):
 def plot_clustered_hexagons(df, W_s, threshold):
     df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
     df['cluster'] = (df['FDI'] > threshold).astype(int)
-    
-    # Convert H3 indices to lat/lon
     df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
-    ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
-    plt.colorbar(scatter, label='Cluster')
-    st.pyplot(fig)
 
-def plot_oat_sensitivity(df, parameter, parameter_range, fixed_params):
-    results = []
-    for param_value in parameter_range:
-        if parameter == 'W_s':
-            fixed_params['W_s'] = param_value
-            FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
-        else:  # threshold
-            FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
-        results.append(np.mean(FDI > param_value))
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(parameter_range, results)
-    plt.xlabel(parameter)
-    plt.ylabel('Proportion of hexagons above threshold' if parameter == 'threshold' else 'Mean FDI')
-    plt.title(f'One-at-a-Time Sensitivity Analysis for {parameter}')
-    st.pyplot(plt)
+    center_lat = df['lat'].mean()
+    center_lon = df['lon'].mean()
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
+
+    def get_color(cluster):
+        return 'red' if cluster == 1 else 'blue'
+
+    for _, row in df.iterrows():
+        hexagon = h3.cell_to_boundary(row['GRID_ID'])
+        folium.Polygon(
+            locations=hexagon,
+            popup=f"FDI: {row['FDI']:.2f}",
+            color='black',
+            weight=1,
+            fill=True,
+            fill_color=get_color(row['cluster']),
+            fill_opacity=0.65
+        ).add_to(m)
+
+    legend_html = '''
+         <div style="position: fixed; 
+                     bottom: 50px; left: 70px; width: 150px; height: 90px; 
+                     border:2px solid grey; z-index:9999; font-size:14px;
+                     ">&nbsp; Cluster <br>
+             &nbsp; <i class="fa fa-square fa-2x" style="color:blue"></i>&nbsp; Below Threshold <br>
+             &nbsp; <i class="fa fa-square fa-2x" style="color:red"></i>&nbsp; Above Threshold
+         </div>
+         '''
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    return m
+
+def plot_interactive_oat(df):
+    # Create a map to display all hexagons
+    center_lat = df['lat'].mean()
+    center_lon = df['lon'].mean()
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
+
+    # Add hexagons to the map
+    for _, row in df.iterrows():
+        hexagon = h3.cell_to_boundary(row['GRID_ID'])
+        folium.Polygon(
+            locations=hexagon,
+            popup=f"Grid ID: {row['GRID_ID']}",
+            color='black',
+            weight=1,
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.65
+        ).add_to(m)
+
+    # Display the map
+    folium_static(m)
+
+    # Get the selected hexagon's Grid ID
+    selected_grid_id = st.selectbox("Select a Grid ID", df['GRID_ID'].unique())
+
+    # Filter the data for the selected hexagon
+    selected_hexagon_data = df[df['GRID_ID'] == selected_grid_id]
+
+    # Plot the OAT graph for the selected hexagon
+    st.subheader(f"One-at-a-Time Sensitivity Analysis for Grid ID {selected_grid_id}")
+    plot_oat(selected_hexagon_data)
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -349,29 +388,27 @@ def main():
                     mime='application/pdf'
                 )
         with tab3:
-            st.header("Sensitivity Analysis")
+            def sensitivity_analysis_tab(df):
+                st.header("Sensitivity Analysis")
+                
+                W_s_range = range(0, 101, 5)
+                threshold = st.slider("Select threshold value", 0.0, 10.0, 4.8, 0.1)
+                selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
             
-            # Histogram section
-            st.subheader("FDI Distribution for Different W_s Values")
-            W_s_range = range(0, 101, 5)
-            threshold = 4.8
+                col1, col2 = st.columns(2)
             
-            selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
-            plot_sensitivity_histogram(df, selected_W_s, threshold)
+                with col1:
+                    st.subheader("FDI Distribution")
+                    plot_sensitivity_histogram(df, selected_W_s, threshold)
             
-            # Clustered hexagons
-            st.subheader("Clustered Hexagons")
-            plot_clustered_hexagons(df, selected_W_s, threshold)
+                with col2:
+                    st.subheader("Clustered Hexagons")
+                    m = plot_clusters_on_map(df, selected_W_s, threshold)
+                    folium_static(m)
             
-            # One-at-a-Time Sensitivity Analysis
-            st.subheader("One-at-a-Time Sensitivity Analysis")
-            parameter = st.selectbox("Select parameter for OAT analysis", ["W_s", "threshold"])
-            if parameter == 'W_s':
-                parameter_range = st.slider(f"Select range for {parameter}", 0, 100, (0, 100))
-            else:  # threshold
-                parameter_range = st.slider(f"Select range for {parameter}", 0, 10, (0, 10))
-            fixed_params = {"W_s": 50, "threshold": 4.8}
-            plot_oat_sensitivity(df, parameter, parameter_range, fixed_params)
+                # Interactive OAT analysis
+                st.subheader("Interactive One-at-a-Time Sensitivity Analysis")
+                plot_interactive_oat(df)
 
 if __name__ == "__main__":
     main()
