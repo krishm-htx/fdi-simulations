@@ -53,7 +53,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
 
     center_lat = df_filtered['lat'].mean()
     center_lon = df_filtered['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=11, width="600px", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=11, width="100%", height="100%")
 
     def get_color(cluster):
         return 'blue' if cluster == 1 else 'none'
