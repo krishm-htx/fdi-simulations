@@ -35,6 +35,7 @@ def plot_sensitivity_histogram(df, W_s, threshold):
     bins = np.arange(0.8, 5.2, 0.2)
     plt.hist(FDI, bins=bins, edgecolor='black')
     plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
+    plt.xticks(np.arange(1, 5, 0.2)
     plt.xlabel('FDI Value')
     plt.ylabel('Frequency')
     plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
@@ -66,7 +67,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
 
     legend_html = '''
          <div style="position: fixed; 
-                     bottom: 50px; left: 70px; width: 150px; height: 80px; 
+                     bottom: 50px; left: 70px; width: 150px; height: 100px; 
                      border:2px solid grey; z-index:9999; font-size:14px;
                      ">&nbsp; Cluster <br>
              &nbsp; <i class="fa fa-square fa-2x" style="color:blue"></i>&nbsp; Below Threshold <br>
@@ -303,7 +304,22 @@ def main():
 
         # If we reach here, the user is logged in
         # Main app content
-        with st.sidebar:
+        #with st.sidebar:
+
+    
+        # Create Tabs
+        tab1, tab2, tab3 = st.tabs(["Run Simulation", "Docs", "Sensitivity Analysis"])
+    
+        # Load data
+        df, master_df = load_data()
+        if df is None or master_df is None:
+            st.stop()
+    
+        # Tab 1: Run Simulation
+        with tab1:
+            st.header("Run FDI Simulation")
+            st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
+            st.info("If you need help understanding the methodology or how to open these results in ArcPro, please refer to the 'Docs' tab.")
             st.header("Simulation Parameters", help = "With an increment of 1 we calculate the FDI for each weight combination in the specified range. And if the FDI exceeds the threshold we add it to a score.")
             
             w_structural = st.slider(
@@ -320,21 +336,6 @@ def main():
             )
             
             st.info("Set the range of weights you want to run the simulation for and also the threshold of FDI that should be analysed.")
-    
-        # Create Tabs
-        tab1, tab2, tab3 = st.tabs(["Run Simulation", "Docs", "Sensitivity Analysis"])
-    
-        # Load data
-        df, master_df = load_data()
-        if df is None or master_df is None:
-            st.stop()
-    
-        # Tab 1: Run Simulation
-        with tab1:
-            st.header("Run FDI Simulation")
-            st.write("Please adjust the simulation parameters in the sidebar and click 'Run Simulation' to start.")
-            st.info("If you need help understanding the methodology or how to open these results in ArcPro, please refer to the 'Docs' tab.")
-            
             if st.button("Run Simulation", key="run_sim"):
                 with st.spinner("Running simulation..."):
                     W_s_range = np.arange(w_structural[0], w_structural[1] + 1)
