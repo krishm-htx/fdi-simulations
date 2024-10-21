@@ -50,7 +50,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
     m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
 
     def get_color(cluster):
-        return 'blue' if cluster == 1
+        return 'blue' if cluster == 1 else 'none'
 
     for _, row in df.iterrows():
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
