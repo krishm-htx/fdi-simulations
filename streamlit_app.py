@@ -46,7 +46,7 @@ def plot_sensitivity_histogram(df, threshold):
     ax.axvline(x=threshold, color='r', linestyle='--', label=f'Threshold: {threshold}')
     ax.legend()
     
-    st.pyplot(fig))
+    st.pyplot(fig)
 
 @st.cache_data
 def plot_clustered_hexagons(df, threshold):
