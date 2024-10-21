@@ -35,7 +35,7 @@ def plot_sensitivity_histogram(df, W_s, threshold):
     bins = np.arange(0.8, 5.2, 0.2)
     plt.hist(FDI, bins=bins, edgecolor='black')
     plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
-    plt.xticks(np.arange(1, 5, 0.2))
+    plt.xticks(np.arange(1, 5.2, 0.2))
     plt.xlabel('FDI Value')
     plt.ylabel('Frequency')
     plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
@@ -43,12 +43,17 @@ def plot_sensitivity_histogram(df, W_s, threshold):
 
 def plot_clustered_hexagons(df, W_s, threshold):
     df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
-    df['cluster'] = (df['FDI'] > threshold).astype(int)
-    df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
+    
+    hexes = df[df['FDI'] > threshold]['GRID_ID'].tolist()
+    clusters = find_clusters(hexes)
+    df['cluster'] = df['GRID_ID'].apply(lambda x: 1 if any(x in cluster for cluster in clusters) else 0)
+    
+    df_filtered = df[df['cluster'] > 0].copy()
+    df_filtered['lat'], df_filtered['lon'] = zip(*df_filtered['GRID_ID'].apply(lambda x: h3 .cell_to_latlng(x)))
 
     center_lat = df['lat'].mean()
     center_lon = df['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=8.5, width="100%", height="400px")
 
     def get_color(cluster):
         return 'blue' if cluster == 1 else 'none'
@@ -59,7 +64,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
             locations=hexagon,
             popup=f"FDI: {row['FDI']:.2f}",
             color='black',
-            weight=0.7,
+            weight=0.2,
             fill=True,
             fill_color=get_color(row['cluster']),
             fill_opacity=0.6
@@ -83,9 +88,9 @@ def plot_oat(data):
     
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(W_s_values, fdi_values)
-    ax.set_xlabel('W_s')
+    ax.set_xlabel('Weight of structural flooding')
     ax.set_ylabel('FDI')
-    ax.set_title('One-at-a-Time Sensitivity Analysis')
+    ax.set_title('One-at-a-Time Sensitivity Analysis for {data}')
     ax.grid(True)
     
     st.pyplot(fig)
@@ -93,7 +98,7 @@ def plot_interactive_oat(df):
     # Create a map to display all hexagons
     center_lat = df['lat'].mean()
     center_lon = df['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=9, width="100%", height="400px")
 
     # Add hexagons to the map
     for _, row in df.iterrows():
@@ -102,9 +107,9 @@ def plot_interactive_oat(df):
             locations=hexagon,
             popup=f"Grid ID: {row['GRID_ID']}",
             color='black',
-            weight=1,
+            weight=0.2,
             fill=True,
-            fill_color='blue',
+            fill_color='none',
             fill_opacity=0.65
         ).add_to(m)
 
@@ -112,7 +117,7 @@ def plot_interactive_oat(df):
     folium_static(m)
 
     # Get the selected hexagon's Grid ID
-    selected_grid_id = st.selectbox("Select a Grid ID", df['GRID_ID'].unique())
+    selected_grid_id = st.text_input("Paste a Grid ID to analyze", "89446c02c3bffff")
 
     # Filter the data for the selected hexagon
     selected_hexagon_data = df[df['GRID_ID'] == selected_grid_id]
