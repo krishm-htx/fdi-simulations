@@ -32,7 +32,7 @@ MASTER_FILE_PATH = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations
 def plot_sensitivity_histogram(df, W_s, threshold):
     plt.figure(figsize=(10, 6))
     FDI = calculate_fdi(W_s, df['Is'], df['Ip'])
-    bins = np.arange(0, max(FDI) + 0.2, 0.2)
+    bins = np.arange(0.8, 5.2, 0.2)
     plt.hist(FDI, bins=bins, edgecolor='black')
     plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
     plt.xlabel('FDI Value')
@@ -58,15 +58,15 @@ def plot_clustered_hexagons(df, W_s, threshold):
             locations=hexagon,
             popup=f"FDI: {row['FDI']:.2f}",
             color='black',
-            weight=1,
+            weight=0.7,
             fill=True,
             fill_color=get_color(row['cluster']),
-            fill_opacity=0.65
+            fill_opacity=0.6
         ).add_to(m)
 
     legend_html = '''
          <div style="position: fixed; 
-                     bottom: 50px; left: 70px; width: 150px; height: 90px; 
+                     bottom: 50px; left: 70px; width: 150px; height: 80px; 
                      border:2px solid grey; z-index:9999; font-size:14px;
                      ">&nbsp; Cluster <br>
              &nbsp; <i class="fa fa-square fa-2x" style="color:blue"></i>&nbsp; Below Threshold <br>
@@ -124,8 +124,8 @@ def sensitivity_analysis_tab(df):
     st.header("Sensitivity Analysis")
     
     W_s_range = range(0, 101, 5)
-    threshold = st.slider("Select threshold value", 0.0, 10.0, 4.8, 0.1)
-    selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
+    threshold = st.slider("Select threshold value", 0.0, 5.0, 4.8, 0.1)
+    selected_W_s = st.select_slider("Select Weight of structural flooding value", options=W_s_range)
 
     col1, col2 = st.columns(2)
 
