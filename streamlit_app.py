@@ -96,8 +96,8 @@ def plot_oat(data):
     st.pyplot(fig)
 def plot_interactive_oat(df):
     # Create a map to display all hexagons
-    center_lat = df_filtered['lat'].mean()
-    center_lon = df_filtered['lon'].mean()
+    center_lat = df['lat'].mean()
+    center_lon = df['lon'].mean()
     m = folium.Map(location=[center_lat, center_lon], zoom_start=9, width="100%", height="400px")
 
     # Add hexagons to the map
