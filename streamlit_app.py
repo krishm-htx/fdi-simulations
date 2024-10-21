@@ -35,7 +35,7 @@ def plot_sensitivity_histogram(df, W_s, threshold):
     bins = np.arange(0.8, 5.2, 0.2)
     plt.hist(FDI, bins=bins, edgecolor='black')
     plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
-    plt.xticks(np.arange(1, 5, 0.2)
+    plt.xticks(np.arange(1, 5, 0.2))
     plt.xlabel('FDI Value')
     plt.ylabel('Frequency')
     plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
