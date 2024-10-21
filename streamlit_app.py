@@ -109,6 +109,28 @@ def plot_interactive_oat(df):
     st.subheader(f"One-at-a-Time Sensitivity Analysis for Grid ID {selected_grid_id}")
     plot_oat(selected_hexagon_data)
 
+def sensitivity_analysis_tab(df):
+    st.header("Sensitivity Analysis")
+    
+    W_s_range = range(0, 101, 5)
+    threshold = st.slider("Select threshold value", 0.0, 10.0, 4.8, 0.1)
+    selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("FDI Distribution")
+        plot_sensitivity_histogram(df, selected_W_s, threshold)
+
+    with col2:
+        st.subheader("Clustered Hexagons")
+        m = plot_clusters_on_map(df, selected_W_s, threshold)
+        folium_static(m)
+
+    # Interactive OAT analysis
+    st.subheader("Interactive One-at-a-Time Sensitivity Analysis")
+    plot_interactive_oat(df)
+
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
@@ -388,27 +410,7 @@ def main():
                     mime='application/pdf'
                 )
         with tab3:
-            def sensitivity_analysis_tab(df):
-                st.header("Sensitivity Analysis")
-                
-                W_s_range = range(0, 101, 5)
-                threshold = st.slider("Select threshold value", 0.0, 10.0, 4.8, 0.1)
-                selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
-            
-                col1, col2 = st.columns(2)
-            
-                with col1:
-                    st.subheader("FDI Distribution")
-                    plot_sensitivity_histogram(df, selected_W_s, threshold)
-            
-                with col2:
-                    st.subheader("Clustered Hexagons")
-                    m = plot_clusters_on_map(df, selected_W_s, threshold)
-                    folium_static(m)
-            
-                # Interactive OAT analysis
-                st.subheader("Interactive One-at-a-Time Sensitivity Analysis")
-                plot_interactive_oat(df)
+            sensitivity_analysis_tab(df)
 
 if __name__ == "__main__":
     main()
