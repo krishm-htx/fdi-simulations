@@ -124,7 +124,7 @@ def sensitivity_analysis_tab(df):
 
     with col2:
         st.subheader("Clustered Hexagons")
-        m = plot_clusters_on_map(df, selected_W_s, threshold)
+        m = plot_clustered_hexagons(df, selected_W_s, threshold)
         folium_static(m)
 
     # Interactive OAT analysis
