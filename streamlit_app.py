@@ -129,9 +129,10 @@ def plot_interactive_oat(df):
 
 def sensitivity_analysis_tab(df):
     st.header("Sensitivity Analysis")
-    
+    st.info("Change the weight and the threhold to see how it affects the FDI distribution and the clusters!")
     W_s_range = range(0, 101, 5)
     selected_W_s = st.select_slider("Select Weight of structural flooding value", options=W_s_range)
+    st.write(f"Weight of Population flooding: {100 - selected_W_s}")
     threshold = st.slider("Select FDI threshold value", 0.0, 5.0, 4.8, 0.1)
     col1, col2 = st.columns(2)
 
