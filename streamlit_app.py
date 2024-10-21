@@ -30,42 +30,40 @@ INSTANCES_FILE_PATH ="https://raw.githubusercontent.com/krishm-htx/fdi-simulatio
 MASTER_FILE_PATH = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
 
 def plot_sensitivity_histogram(df, W_s, threshold):
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 6))
     FDI = calculate_fdi(W_s, df['Is'], df['Ip'])
-    plt.hist(FDI, bins=20, edgecolor='black')
+    bins = np.arange(0, max(FDI) + 0.2, 0.2)
+    plt.hist(FDI, bins=bins, edgecolor='black')
     plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
     plt.xlabel('FDI Value')
     plt.ylabel('Frequency')
     plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
     st.pyplot(plt)
 
-def create_cluster_animation(df, W_s_range, threshold):
+def plot_clustered_hexagons(df, W_s, threshold):
+    df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
+    df['cluster'] = (df['FDI'] > threshold).astype(int)
+    
     fig, ax = plt.subplots(figsize=(10, 8))
+    scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
+    ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
+    plt.colorbar(scatter, label='Cluster')
+    st.pyplot(fig)
 
-    def update(frame):
-        ax.clear()
-        W_s = W_s_range[frame]
-        df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
-        df['cluster'] = (df['FDI'] > threshold).astype(int)
-        
-        scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
-        ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
-        return scatter,
-
-    anim = FuncAnimation(fig, update, frames=len(W_s_range), interval=500, blit=True)
-    return anim
-
-def plot_oat_sensitivity(df, parameter_range, fixed_params):
+def plot_oat_sensitivity(df, parameter, parameter_range, fixed_params):
     results = []
     for param_value in parameter_range:
-        fixed_params[parameter] = param_value
-        FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
-        results.append(np.mean(FDI))
+        if parameter == 'W_s':
+            fixed_params['W_s'] = param_value
+            FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
+        else:  # threshold
+            FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
+        results.append(np.mean(FDI > param_value))
     
     plt.figure(figsize=(10, 6))
     plt.plot(parameter_range, results)
     plt.xlabel(parameter)
-    plt.ylabel('Mean FDI')
+    plt.ylabel('Proportion of hexagons above threshold' if parameter == 'threshold' else 'Mean FDI')
     plt.title(f'One-at-a-Time Sensitivity Analysis for {parameter}')
     st.pyplot(plt)
 
@@ -358,17 +356,19 @@ def main():
             selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
             plot_sensitivity_histogram(df, selected_W_s, threshold)
             
-            # Clustered hexagons time-lapse
-            st.subheader("Clustered Hexagons Time-lapse")
-            anim = create_cluster_animation(df, W_s_range, threshold)
-            st.video(anim.to_html5_video())
+            # Clustered hexagons
+            st.subheader("Clustered Hexagons")
+            plot_clustered_hexagons(df, selected_W_s, threshold)
             
             # One-at-a-Time Sensitivity Analysis
             st.subheader("One-at-a-Time Sensitivity Analysis")
-            parameter = st.selectbox("Select parameter for OAT analysis", [" W_s", "threshold"])
-            parameter_range = st.slider(f"Select range for {parameter}", 0, 100, (0, 100))
+            parameter = st.selectbox("Select parameter for OAT analysis", ["W_s", "threshold"])
+            if parameter == 'W_s':
+                parameter_range = st.slider(f"Select range for {parameter}", 0, 100, (0, 100))
+            else:  # threshold
+                parameter_range = st.slider(f"Select range for {parameter}", 0, 10, (0, 10))
             fixed_params = {"W_s": 50, "threshold": 4.8}
-            plot_oat_sensitivity(df, parameter_range, fixed_params)
+            plot_oat_sensitivity(df, parameter, parameter_range, fixed_params)
 
 if __name__ == "__main__":
     main()
