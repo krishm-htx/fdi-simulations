@@ -16,6 +16,10 @@ import json
 import os
 import hashlib
 import time
+import seaborn as sns
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
+
 # Set page config at the very beginning of the script
 st.set_page_config(layout="wide", page_title="FDI Simulation App")
 
@@ -24,6 +28,46 @@ PDF_METHOD_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/FDI-Si
 PDF_HELP_PATH = "https://github.com/krishm-htx/fdi-simulations/raw/main/Excel_Import_to_ArcPro.pdf"
 INSTANCES_FILE_PATH ="https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/Instances_DATA.xlsx"
 MASTER_FILE_PATH = "https://raw.githubusercontent.com/krishm-htx/fdi-simulations/main/MasterGridObj.xlsx"
+
+def plot_sensitivity_histogram(df, W_s, threshold):
+    plt.figure(figsize=(8, 6))
+    FDI = calculate_fdi(W_s, df['Is'], df['Ip'])
+    plt.hist(FDI, bins=20, edgecolor='black')
+    plt.axvline(threshold, color='red', linestyle='dashed', linewidth=2)
+    plt.xlabel('FDI Value')
+    plt.ylabel('Frequency')
+    plt.title(f'FDI Distribution (W_s = {W_s}, W_p = {100-W_s}, Threshold = {threshold})')
+    st.pyplot(plt)
+
+def create_cluster_animation(df, W_s_range, threshold):
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    def update(frame):
+        ax.clear()
+        W_s = W_s_range[frame]
+        df['FDI'] = calculate_fdi(W_s, df['Is'], df['Ip'])
+        df['cluster'] = (df['FDI'] > threshold).astype(int)
+        
+        scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
+        ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
+        return scatter,
+
+    anim = FuncAnimation(fig, update, frames=len(W_s_range), interval=500, blit=True)
+    return anim
+
+def plot_oat_sensitivity(df, parameter_range, fixed_params):
+    results = []
+    for param_value in parameter_range:
+        fixed_params[parameter] = param_value
+        FDI = calculate_fdi(fixed_params['W_s'], df['Is'], df['Ip'])
+        results.append(np.mean(FDI))
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(parameter_range, results)
+    plt.xlabel(parameter)
+    plt.ylabel('Mean FDI')
+    plt.title(f'One-at-a-Time Sensitivity Analysis for {parameter}')
+    st.pyplot(plt)
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -205,7 +249,7 @@ def main():
             st.info("Set the range of weights you want to run the simulation for and also the threshold of FDI that should be analysed.")
     
         # Create Tabs
-        tab1, tab2 = st.tabs(["Run Simulation", "Docs"])
+        tab1, tab2, tab3 = st.tabs(["Run Simulation", "Docs", "Sensitivity Analysis"])
     
         # Load data
         df, master_df = load_data()
@@ -303,6 +347,28 @@ def main():
                     file_name='Excel_Import_to_ArcPro.pdf', 
                     mime='application/pdf'
                 )
+         with tab3:
+            st.header("Sensitivity Analysis")
+            
+            # Histogram section
+            st.subheader("FDI Distribution for Different W_s Values")
+            W_s_range = range(0, 101, 5)
+            threshold = 4.8
+            
+            selected_W_s = st.select_slider("Select W_s value", options=W_s_range)
+            plot_sensitivity_histogram(df, selected_W_s, threshold)
+            
+            # Clustered hexagons time-lapse
+            st.subheader("Clustered Hexagons Time-lapse")
+            anim = create_cluster_animation(df, W_s_range, threshold)
+            st.video(anim.to_html5_video())
+            
+            # One-at-a-Time Sensitivity Analysis
+            st.subheader("One-at-a-Time Sensitivity Analysis")
+            parameter = st.selectbox("Select parameter for OAT analysis", [" W_s", "threshold"])
+            parameter_range = st.slider(f"Select range for {parameter}", 0, 100, (0, 100))
+            fixed_params = {"W_s": 50, "threshold": 4.8}
+            plot_oat_sensitivity(df, parameter_range, fixed_params)
 
 if __name__ == "__main__":
     main()
