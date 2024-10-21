@@ -45,13 +45,13 @@ def plot_clustered_hexagons(df, W_s, threshold):
     df['cluster'] = (df['FDI'] > threshold).astype(int)
     
     # Convert H3 indices to lat/lon
-    df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3.h3_to_geo(x)))
+    df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3.cell_to_latlng(x)))
     
     fig, ax = plt.subplots(figsize=(10, 8))
     scatter = ax.scatter(df['lon'], df['lat'], c=df['cluster'], cmap='coolwarm', alpha=0.7)
     ax.set_title(f'Clustered Hexagons (W_s = {W_s}, Threshold = {threshold})')
     plt.colorbar(scatter, label='Cluster')
-    st.pyplot(fig)
+    st.pyplot(fig
 
 def plot_oat_sensitivity(df, parameter, parameter_range, fixed_params):
     results = []
