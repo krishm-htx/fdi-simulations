@@ -99,7 +99,7 @@ def plot_interactive_oat(df):
     df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3 .cell_to_latlng(x)))
     center_lat = df['lat'].mean()
     center_lon = df['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=11, width="100%", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=11, width="100%", height="100%")
 
     # Add hexagons to the map
     for _, row in df.iterrows():
