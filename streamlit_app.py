@@ -53,7 +53,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
 
     center_lat = df_filtered['lat'].mean()
     center_lon = df_filtered['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=8.5, width="100%", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=11.5, width="100%", height="400px")
 
     def get_color(cluster):
         return 'blue' if cluster == 1 else 'none'
@@ -86,11 +86,11 @@ def plot_oat(data):
     W_s_values = range(0, 101, 5)
     fdi_values = [calculate_fdi(W_s, data['Is'].iloc[0], data['Ip'].iloc[0]) for W_s in W_s_values]
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(W_s_values, fdi_values)
     ax.set_xlabel('Weight of structural flooding')
     ax.set_ylabel('FDI')
-    ax.set_title('One-at-a-Time Sensitivity Analysis for {data}')
+    ax.set_title(f'One-at-a-Time Sensitivity Analysis for {data}')
     ax.grid(True)
     
     st.pyplot(fig)
@@ -99,7 +99,7 @@ def plot_interactive_oat(df):
     df['lat'], df['lon'] = zip(*df['GRID_ID'].apply(lambda x: h3 .cell_to_latlng(x)))
     center_lat = df['lat'].mean()
     center_lon = df['lon'].mean()
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=9, width="100%", height="400px")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=11, width="100%", height="400px")
 
     # Add hexagons to the map
     for _, row in df.iterrows():
@@ -108,10 +108,10 @@ def plot_interactive_oat(df):
             locations=hexagon,
             popup=f"Grid ID: {row['GRID_ID']}",
             color='black',
-            weight=0.2,
+            weight=0.3,
             fill=True,
-            fill_color='none',
-            fill_opacity=0.65
+            fill_color='blue',
+            fill_opacity=0.45
         ).add_to(m)
 
     # Display the map
