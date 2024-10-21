@@ -50,7 +50,7 @@ def plot_clustered_hexagons(df, W_s, threshold):
     m = folium.Map(location=[center_lat, center_lon], zoom_start=10, width="100%", height="400px")
 
     def get_color(cluster):
-        return 'red' if cluster == 1 else 'blue'
+        return 'blue' if cluster == 1
 
     for _, row in df.iterrows():
         hexagon = h3.cell_to_boundary(row['GRID_ID'])
@@ -76,7 +76,18 @@ def plot_clustered_hexagons(df, W_s, threshold):
     m.get_root().html.add_child(folium.Element(legend_html))
 
     return m
-
+def plot_oat(data):
+    W_s_values = range(0, 101, 5)
+    fdi_values = [calculate_fdi(W_s, data['Is'].iloc[0], data['Ip'].iloc[0]) for W_s in W_s_values]
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(W_s_values, fdi_values)
+    ax.set_xlabel('W_s')
+    ax.set_ylabel('FDI')
+    ax.set_title('One-at-a-Time Sensitivity Analysis')
+    ax.grid(True)
+    
+    st.pyplot(fig)
 def plot_interactive_oat(df):
     # Create a map to display all hexagons
     center_lat = df['lat'].mean()
